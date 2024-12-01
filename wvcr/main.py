@@ -46,25 +46,6 @@ class TranscriptionHandler:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Voice Recording and Transcription Tool')
-    parser.add_argument('--test1', action='store_true', help='Test the notification system')
-    parser.add_argument('--test2', action='store_true', help='Test the OpenAI client')
-    args = parser.parse_args()
-
-    if args.test1:
-        logger.info("Running notification test")
-        notifier = NotificationManager()
-        notifier.test_notification()
-        return
-
-    if args.test2:
-        logger.info("Running OpenAI client test")
-        handler = TranscriptionHandler()
-        transcription = transcribe_audio(None, mode=ProcessingMode.TEST)
-        logger.info(f"Test transcription result: {transcription}")
-        handler._send_notification(transcription)
-        return
-
     try:
         logger.debug("Starting voice recording")
         config = AudioConfig()
