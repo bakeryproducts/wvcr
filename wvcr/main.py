@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-
 import sys
-import argparse 
+import argparse
 from pathlib import Path
 import importlib.resources
 from datetime import datetime
@@ -11,8 +10,9 @@ from loguru import logger
 
 from wvcr.config import AudioConfig
 from wvcr.notification_manager import NotificationManager
-from wvcr.openai_client import transcribe_audio, ProcessingMode
+from wvcr.openai_client import transcribe, ProcessingMode, process_text
 from wvcr.recorder import VoiceRecorder
+
 
 PACKAGE_ROOT = Path(importlib.resources.files("wvcr"))
 OUTPUT = PACKAGE_ROOT.parent / "output"
@@ -30,23 +30,45 @@ class TranscriptionHandler:
     def _send_notification(self, text: str):
         self.notifier.send_notification('Voice Transcription', text, font_size='28px')
 
-    # Convert other static methods to instance methods
-    def handle_transcription(self, audio_file: Path) -> tuple[str, Path]:
-        transcription = transcribe_audio(audio_file)
+    def handle_transcription(self, audio_file: Path, mode: ProcessingMode = None) -> tuple[str, Path]:
+        text = transcribe(audio_file)
+        processed_text = process_text(text, mode)
+        
         transcript_file = OUTPUT / f"transcripts/{audio_file.stem}.txt"
         transcript_file.parent.mkdir(exist_ok=True, parents=True)
         
         with open(transcript_file, 'w', encoding='utf-8') as f:
-            f.write(transcription)
+            f.write(processed_text)
         
-        pyperclip.copy(transcription)
-        self._send_notification(transcription)
+        pyperclip.copy(processed_text)
+        self._send_notification(processed_text)
         
-        return transcription, transcript_file
+        return processed_text, transcript_file
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Voice recording and transcription tool')
+    parser.add_argument('mode', nargs='?', default='transcribe',
+                       choices=['transcribe', 'correct', 'answer'],
+                       help='Processing mode (default: transcribe)')
+    return parser.parse_args()
+
+def get_processing_mode(args) -> ProcessingMode:
+    if not args.mode:
+        return None
+    
+    mode_map = {
+        'transcribe': ProcessingMode.TRANSCRIBE_ONLY,
+        'correct': ProcessingMode.CORRECT,
+        'answer': ProcessingMode.ANSWER
+    }
+    return mode_map[args.mode]
 
 def main():
     try:
+        args = parse_args()
+        mode = get_processing_mode(args)
+        
         logger.debug("Starting voice recording")
         config = AudioConfig()
         audio_file = OUTPUT / f"records/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.{config.OUTPUT_FORMAT}"
@@ -57,7 +79,7 @@ def main():
         logger.debug(f"Recording saved to {audio_file}")
 
         handler = TranscriptionHandler()
-        transcription, tr_file = handler.handle_transcription(audio_file)
+        transcription, tr_file = handler.handle_transcription(audio_file, mode)
         logger.debug(f"Transcription saved to {tr_file}")
         logger.info(f"Transcription: {transcription}")
 

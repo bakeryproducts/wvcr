@@ -16,7 +16,6 @@ class ProcessingMode(Enum):
     TRANSCRIBE_ONLY = "transcribe_only"
     CORRECT = "correct"
     ANSWER = "answer"
-    TEST = "test"
 
 @dataclass
 class ProcessingKeywords:
@@ -96,19 +95,12 @@ def detect_mode(transcript):
 
     return ProcessingMode.TRANSCRIBE_ONLY
 
-def transcribe_audio(audio_file, mode=None):
-    """Main function to handle audio transcription with different processing modes."""
-    if mode is ProcessingMode.TEST:
-        text = 'What is the capital of France?' + ' ' + ProcessingKeywords.ANSWER[0]
-        mode = None
-    else:
-        text = transcribe(audio_file)
-    
+def process_text(text: str, mode: ProcessingMode = None) -> str:
+    """Process text based on specified mode or detect mode from content."""
     if mode is None:
         mode = detect_mode(text)
-    logger.debug(f"Detected processing mode: {mode}")
+    logger.debug(f"Processing text with mode: {mode}")
     
-    # Apply processing based on mode
     if mode == ProcessingMode.CORRECT:
         return correct_transcript(text)
     elif mode == ProcessingMode.ANSWER:
