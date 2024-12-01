@@ -84,7 +84,7 @@ def explain_text(transcript, config: OAIConfig):
     messages = Messages()
     messages.clear_history()
     clipboard_content = pyperclip.paste()
-    messages.add_message("system", "You are a assistant. Please use the following context and proceed to user's question:")
+    messages.add_message("system", "You are a assistant. Please use the following context and proceed to user's question. Be concise and brief.")
     messages.add_message("user", transcript)
     messages.add_message("user", clipboard_content)
 
