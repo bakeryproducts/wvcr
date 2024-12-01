@@ -17,6 +17,8 @@ from wvcr.recorder import VoiceRecorder
 PACKAGE_ROOT = Path(importlib.resources.files("wvcr"))
 OUTPUT = PACKAGE_ROOT.parent / "output"
 OUTPUT.mkdir(exist_ok=True)
+OUTPUT_TRANSCRIBE = OUTPUT / ProcessingMode.TRANSCRIBE.value.lower()
+OUTPUT_TRANSCRIBE.mkdir(exist_ok=True)
 
 logger.add(
     OUTPUT / 'logs' / "{time:YYYY_MM}.log",
@@ -30,37 +32,47 @@ class TranscriptionHandler:
     def _send_notification(self, text: str):
         self.notifier.send_notification('Voice Transcription', text, font_size='28px')
 
-    def handle_transcription(self, audio_file: Path, mode: ProcessingMode = None) -> tuple[str, Path]:
-        text = transcribe(audio_file)
-        processed_text = process_text(text, mode)
-        
-        transcript_file = OUTPUT / f"transcripts/{audio_file.stem}.txt"
-        transcript_file.parent.mkdir(exist_ok=True, parents=True)
-        
+    def _get_output_dir(self, mode: ProcessingMode) -> Path:
+        dst = OUTPUT / mode.value.lower()
+        dst.mkdir(exist_ok=True, parents=True)
+        return dst
+
+    def handle_transcription(self, audio_file: Path, mode: ProcessingMode) -> tuple[str, Path]:
+        transcription = transcribe(audio_file)
+        logger.debug(f"Transcription: {transcription}")
+        transcript_file = OUTPUT_TRANSCRIBE / f"{audio_file.stem}.txt"
         with open(transcript_file, 'w', encoding='utf-8') as f:
-            f.write(processed_text)
-        
+            f.write(transcription)
+
+        # this will check transcription for ketwords and process it accordingly
+        processed_text, mode = process_text(transcription, mode)
+        if mode != ProcessingMode.TRANSCRIBE:
+            # keyword detected, some post-processing has been done
+            output_dir = self._get_output_dir(mode)
+            output_file = output_dir / f"{audio_file.stem}.txt"
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(processed_text)
+
         pyperclip.copy(processed_text)
         self._send_notification(processed_text)
         
-        return processed_text, transcript_file
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Voice recording and transcription tool')
     parser.add_argument('mode', nargs='?', default='transcribe',
-                       choices=['transcribe', 'correct', 'answer'],
+                       choices=['transcribe', 'correct', 'answer', 'explain'],
                        help='Processing mode (default: transcribe)')
     return parser.parse_args()
 
 def get_processing_mode(args) -> ProcessingMode:
     if not args.mode:
-        return None
+        return ProcessingMode.TRANSCRIBE
     
     mode_map = {
-        'transcribe': ProcessingMode.TRANSCRIBE_ONLY,
+        'transcribe': ProcessingMode.TRANSCRIBE,
         'correct': ProcessingMode.CORRECT,
-        'answer': ProcessingMode.ANSWER
+        'answer': ProcessingMode.ANSWER,
+        'explain': ProcessingMode.EXPLAIN
     }
     return mode_map[args.mode]
 
@@ -79,9 +91,7 @@ def main():
         logger.debug(f"Recording saved to {audio_file}")
 
         handler = TranscriptionHandler()
-        transcription, tr_file = handler.handle_transcription(audio_file, mode)
-        logger.debug(f"Transcription saved to {tr_file}")
-        logger.info(f"Transcription: {transcription}")
+        handler.handle_transcription(audio_file, mode)
 
     except KeyboardInterrupt:
         logger.info("Program terminated by user")
