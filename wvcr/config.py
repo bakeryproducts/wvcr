@@ -22,7 +22,7 @@ class AudioConfig:
     RATE: int = 44100
     OUTPUT_FORMAT: str = 'mp3'
     STOP_KEY: Key = Key.esc  # Changed from '\x1b' to Key.esc
-    MAX_DURATION: int = 60  # maximum duration in seconds (2 minutes)
+    MAX_DURATION: int = 120  # maximum duration in seconds (2 minutes)
     # Lower quality settings for smaller files
     LOW_QUALITY_RATE: int = 16000  # CD quality is 44100, 16000 is good for voice
     LOW_QUALITY_FORMAT: int = pyaudio.paInt16  # Could use paInt8 for even smaller files

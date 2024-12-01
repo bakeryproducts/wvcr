@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=42.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "wvcr"
@@ -27,4 +27,9 @@ packages = ["wvcr"]
 [tool.hatch.build]
 artifacts = [
     "data/",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
 ]

@@ -2,6 +2,7 @@
 # Project specific
 output/
 input/
+tests/data
 
 # Python
 __pycache__/
