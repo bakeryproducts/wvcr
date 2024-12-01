@@ -10,9 +10,8 @@ from wvcr.config import OAIConfig, OUTPUT
 from wvcr.messages import Messages, get_prev_files, load_previous_responses
 
 
-# Initialize config and OpenAI client once
-config = OAIConfig()
-client = OpenAI(api_key=config.API_KEY)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 class ProcessingMode(Enum):
     TRANSCRIBE = "transcribe"
@@ -30,7 +29,7 @@ for dir in MODE_DIRS.values():
     dir.mkdir(exist_ok=True)
 
 
-def transcribe(audio_file):
+def transcribe(audio_file, config):
     """Transcribe audio file using OpenAI Whisper API."""
     try:
         with open(audio_file, 'rb') as audio:
@@ -43,22 +42,20 @@ def transcribe(audio_file):
         raise Exception(f"Transcription failed: {str(e)}")
 
 
-def answer_question(transcript, temperature=0.0):
+def answer_question(transcript, config: OAIConfig):
     """Answer questions found in the transcript."""
     logger.info(f"Answering question: {transcript}")
 
     messages = Messages()
     try:
         messages.clear_history()
-        messages.add_message("system", "You are a helpful assistant. Please answer to the following question. Be concise and informative. Do not use full sentences")
+        messages.add_message("system", "You are a helpful assistant. Please answer to the following question. Be concise and informative. Do not use full sentences. Your answer should start with most relevant information. Add more IF NECESSARY after.")
 
         # preload history
         _prev_answers = get_prev_files(MODE_DIRS[ProcessingMode.ANSWER])
         prev_answers = load_previous_responses(_prev_answers, limit=5)
         _prev_transcripts = get_prev_files(MODE_DIRS[ProcessingMode.TRANSCRIBE], _prev_answers)
         prev_transcripts = load_previous_responses(_prev_transcripts, limit=5)
-        for a, t in zip(_prev_answers, _prev_transcripts):
-            logger.info(f"Previous afn: {a}, tfn: {t}")
 
         if len(prev_answers) != len(prev_transcripts):
             logger.warning("Previous answers and transcripts do not match")
@@ -72,7 +69,7 @@ def answer_question(transcript, temperature=0.0):
         
         response = client.chat.completions.create(
             model=config.GPT_MODEL,
-            temperature=temperature,
+            temperature=config.temperature,
             messages=messages.get_messages()
         )
         return response.choices[0].message.content
@@ -80,7 +77,7 @@ def answer_question(transcript, temperature=0.0):
         logger.exception(f"Could not process question: {str(e)}")
         return transcript
 
-def explain_text(transcript, temperature=0.0):
+def explain_text(transcript, config: OAIConfig):
     """Explain the transcript in context of clipboard content."""
     logger.info(f"Explaining with context: {transcript}")
 
@@ -88,13 +85,15 @@ def explain_text(transcript, temperature=0.0):
     messages.clear_history()
     clipboard_content = pyperclip.paste()
     messages.add_message("system", "You are a assistant. Please use the following context and proceed to user's question:")
-    messages.add_message("user", clipboard_content)
     messages.add_message("user", transcript)
+    messages.add_message("user", clipboard_content)
+
+    messages._print()
 
     try:
         response = client.chat.completions.create(
             model=config.GPT_MODEL,
-            temperature=temperature,
+            temperature=config.temperature,
             messages=messages.get_messages()
         )
         return response.choices[0].message.content
@@ -102,28 +101,28 @@ def explain_text(transcript, temperature=0.0):
         logger.exception(f"Could not process explanation: {str(e)}")
         return transcript
 
+
 def detect_mode(transcript):
     """Detect processing mode based on keywords in transcript."""
     lower_transcript = transcript.lower()
     lower_transcript = re.sub(r'[^\w\s]', '', lower_transcript)
     
-    if any(keyword in lower_transcript for keyword in ProcessingKeywords.CORRECT):
-        return ProcessingMode.CORRECT
-    elif any(keyword in lower_transcript for keyword in ProcessingKeywords.ANSWER):
+    if any(keyword in lower_transcript for keyword in ProcessingKeywords.ANSWER):
         return ProcessingMode.ANSWER
     elif any(keyword in lower_transcript for keyword in ProcessingKeywords.EXPLAIN):
         return ProcessingMode.EXPLAIN
 
     return ProcessingMode.TRANSCRIBE
 
-def process_text(text: str, mode: ProcessingMode = None) -> str:
+
+def process_text(text: str, mode: ProcessingMode = None, config: OAIConfig = None):
     """Process text based on specified mode or detect mode from content."""
     if mode is None:
         mode = detect_mode(text)
     logger.debug(f"Processing text with mode: {mode}")
     
     if mode == ProcessingMode.ANSWER:
-        return answer_question(text), mode
+        return answer_question(text, config), mode
     elif mode == ProcessingMode.EXPLAIN:
-        return explain_text(text), mode
+        return explain_text(text, config), mode
     return text, mode

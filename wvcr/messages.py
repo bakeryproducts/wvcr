@@ -29,7 +29,6 @@ def get_prev_files(output_dir: Path, filenames: List[Path]=None):
     else:
         # load from stems from output_dir
         filenames = [output_dir / f.name for f in filenames]
-    logger.debug(f"Previous files: {filenames}")
     return filenames
 
         

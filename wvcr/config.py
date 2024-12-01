@@ -16,9 +16,13 @@ OUTPUT.mkdir(exist_ok=True)
 
 @dataclass
 class OAIConfig:
-    API_KEY: str = os.getenv("OPENAI_API_KEY")
     STT_MODEL: str = "whisper-1"
-    GPT_MODEL: str = "gpt-4o"
+    GPT_MODEL: str = "gpt-4o-2024-11-20"
+    temperature: float = 0.0
+    
+    def __init__(self, model: str = None):
+        if model:
+            self.GPT_MODEL = model
 
 
 @dataclass
