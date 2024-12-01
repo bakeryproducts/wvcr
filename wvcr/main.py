@@ -39,11 +39,11 @@ class VoiceRecorder:
     def _setup_audio(self):
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(
-            format=self.config.FORMAT,
+            format=self.config.LOW_QUALITY_FORMAT,
             channels=self.config.CHANNELS,
-            rate=self.config.RATE,
+            rate=self.config.LOW_QUALITY_RATE,
             input=True,
-            frames_per_buffer=self.config.CHUNK
+            frames_per_buffer=self.config.LOW_QUALITY_CHUNK
         )
 
     def _send_notification(self, title: str, text: str):
@@ -90,8 +90,8 @@ class VoiceRecorder:
     def _save_to_file(self, filename: Path):
         with wave.open(str(filename), 'wb') as wf:
             wf.setnchannels(self.config.CHANNELS)
-            wf.setsampwidth(self.p.get_sample_size(self.config.FORMAT))
-            wf.setframerate(self.config.RATE)
+            wf.setsampwidth(self.p.get_sample_size(self.config.LOW_QUALITY_FORMAT))
+            wf.setframerate(self.config.LOW_QUALITY_RATE)
             wf.writeframes(b''.join(self.frames))
 
 
