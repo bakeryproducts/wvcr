@@ -2,23 +2,17 @@
 import sys
 import argparse
 from pathlib import Path
-import importlib.resources
 from datetime import datetime
 
 import pyperclip
 from loguru import logger
 
-from wvcr.config import AudioConfig
+from wvcr.config import AudioConfig, OUTPUT
 from wvcr.notification_manager import NotificationManager
-from wvcr.openai_client import transcribe, ProcessingMode, process_text
+from wvcr.openai_client import transcribe, ProcessingMode, process_text, MODE_DIRS
 from wvcr.recorder import VoiceRecorder
 
 
-PACKAGE_ROOT = Path(importlib.resources.files("wvcr"))
-OUTPUT = PACKAGE_ROOT.parent / "output"
-OUTPUT.mkdir(exist_ok=True)
-OUTPUT_TRANSCRIBE = OUTPUT / ProcessingMode.TRANSCRIBE.value.lower()
-OUTPUT_TRANSCRIBE.mkdir(exist_ok=True)
 
 logger.add(
     OUTPUT / 'logs' / "{time:YYYY_MM}.log",
@@ -40,16 +34,16 @@ class TranscriptionHandler:
     def handle_transcription(self, audio_file: Path, mode: ProcessingMode) -> tuple[str, Path]:
         transcription = transcribe(audio_file)
         logger.debug(f"Transcription: {transcription}")
-        transcript_file = OUTPUT_TRANSCRIBE / f"{audio_file.stem}.txt"
+        transcript_file = MODE_DIRS[ProcessingMode.TRANSCRIBE] / f"{audio_file.stem}.txt"
         with open(transcript_file, 'w', encoding='utf-8') as f:
             f.write(transcription)
 
-        # this will check transcription for ketwords and process it accordingly
+        # Process with mode directory for context
+        mode_dir = MODE_DIRS[mode]
         processed_text, mode = process_text(transcription, mode)
+        
         if mode != ProcessingMode.TRANSCRIBE:
-            # keyword detected, some post-processing has been done
-            output_dir = self._get_output_dir(mode)
-            output_file = output_dir / f"{audio_file.stem}.txt"
+            output_file = mode_dir / f"{audio_file.stem}.txt"
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(processed_text)
 
@@ -60,7 +54,7 @@ class TranscriptionHandler:
 def parse_args():
     parser = argparse.ArgumentParser(description='Voice recording and transcription tool')
     parser.add_argument('mode', nargs='?', default='transcribe',
-                       choices=['transcribe', 'correct', 'answer', 'explain'],
+                       choices=['transcribe', 'answer', 'explain'],
                        help='Processing mode (default: transcribe)')
     return parser.parse_args()
 
@@ -70,7 +64,6 @@ def get_processing_mode(args) -> ProcessingMode:
     
     mode_map = {
         'transcribe': ProcessingMode.TRANSCRIBE,
-        'correct': ProcessingMode.CORRECT,
         'answer': ProcessingMode.ANSWER,
         'explain': ProcessingMode.EXPLAIN
     }

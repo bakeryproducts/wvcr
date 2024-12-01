@@ -2,9 +2,16 @@ import os
 from dataclasses import dataclass
 import pyaudio
 from pynput.keyboard import Key
+from pathlib import Path
+import importlib.resources
 
 import dotenv
 dotenv.load_dotenv()
+
+
+PACKAGE_ROOT = Path(importlib.resources.files("wvcr"))
+OUTPUT = PACKAGE_ROOT.parent / "output"
+OUTPUT.mkdir(exist_ok=True)
 
 
 @dataclass
