@@ -34,9 +34,11 @@ def get_prev_files(output_dir: Path, filenames: List[Path]=None):
         
 def load_previous_responses(filenames, limit: int = 5) -> str:
     files = sorted(filenames, key=lambda x: x.stat().st_mtime, reverse=False)
+    files = files[-limit:]
+
     content = []
     
-    for file in files[:limit]:
+    for file in files:
         try:
             with open(file, 'r', encoding='utf-8') as f:
                 content.append(f.read().strip())
