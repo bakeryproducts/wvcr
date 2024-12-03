@@ -5,7 +5,6 @@ from pathlib import Path
 from datetime import datetime
 
 import pyperclip
-from loguru import logger
 
 from wvcr.config import AudioConfig, OUTPUT, OAIConfig
 from wvcr.notification_manager import NotificationManager
@@ -13,7 +12,7 @@ from wvcr.openai_client import transcribe, ProcessingMode, process_text, MODE_DI
 from wvcr.recorder import VoiceRecorder
 
 
-
+from loguru import logger
 logger.add(
     OUTPUT / 'logs' / "{time:YYYY_MM}.log",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",

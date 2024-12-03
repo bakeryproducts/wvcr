@@ -1,16 +1,12 @@
 import re
-import os
-import pyperclip
 from enum import Enum
 from dataclasses import dataclass
 
+import pyperclip
 from loguru import logger
-from openai import OpenAI
 from wvcr.config import OAIConfig, OUTPUT
 from wvcr.messages import Messages, get_prev_files, load_previous_responses
 
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class ProcessingMode(Enum):
@@ -33,7 +29,7 @@ def transcribe(audio_file, config):
     """Transcribe audio file using OpenAI Whisper API."""
     try:
         with open(audio_file, 'rb') as audio:
-            transcription = client.audio.transcriptions.create(
+            transcription = config.client.audio.transcriptions.create(
                 model=config.STT_MODEL,
                 file=audio
             )
@@ -67,7 +63,7 @@ def answer_question(transcript, config: OAIConfig):
         messages.add_message("user", transcript)
         messages._print()
         
-        response = client.chat.completions.create(
+        response = config.client.chat.completions.create(
             model=config.GPT_MODEL,
             temperature=config.temperature,
             messages=messages.get_messages()
@@ -91,7 +87,7 @@ def explain_text(transcript, config: OAIConfig):
     messages._print()
 
     try:
-        response = client.chat.completions.create(
+        response = config.client.chat.completions.create(
             model=config.GPT_MODEL,
             temperature=config.temperature,
             messages=messages.get_messages()
