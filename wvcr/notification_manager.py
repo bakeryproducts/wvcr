@@ -4,7 +4,12 @@ from plyer import notification
 
 class NotificationManager:
     @staticmethod
-    def send_notification(title: str, text: str, timeout: int = 10, color: str = '#2ecc71', font_size: str = '32px'):
+    def send_notification(title: str,
+                          text: str,
+                          timeout: int = 10,
+                          color: str = '#2ecc71',
+                          font_size: str = '32px',
+                          cutoff: int = None):
         """
         Send a system notification with styled text.
         
@@ -15,8 +20,10 @@ class NotificationManager:
             color: HTML color code for the text
             font_size: Font size with units (e.g. '32px', '12pt')
         """
-        notification_text = text[:100] + ('...' if len(text) > 100 else '')
-        message = f"<span color='{color}' font='{font_size}'><i><b>{notification_text}</b></i></span>"
+        if cutoff and len(text) > cutoff:
+            text = text[:cutoff] + "..."
+
+        message = f"<span color='{color}' font='{font_size}'><i><b>{text}</b></i></span>"
         
         try:
             notification.notify(

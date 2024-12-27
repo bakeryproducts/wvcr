@@ -2,21 +2,21 @@ import time
 from pathlib import Path
 import wave
 import pyaudio
-from pynput import keyboard
 from loguru import logger
 
 from wvcr.config import AudioConfig
-from wvcr.notification_manager import NotificationManager
+from wvcr.common import KeyMonitor
 
 
 class VoiceRecorder:
-    def __init__(self, config: AudioConfig):
-        self.config = config
+    def __init__(self, notifier):
+        self.config = AudioConfig()
         self.recording = False
         self.frames = []
         self.listener = None
         self.start_time = None
-        self.notifier = NotificationManager()
+        self.notifier = notifier
+        self.key_monitor = None
 
     def _setup_audio(self):
         self.p = pyaudio.PyAudio()
@@ -37,8 +37,8 @@ class VoiceRecorder:
             self.listener.stop()
 
     def _monitor_stop_key(self):
-        self.listener = keyboard.Listener(on_press=self._on_key_press)
-        self.listener.start()
+        self.key_monitor = KeyMonitor(self.config.STOP_KEY, lambda: setattr(self, 'recording', False))
+        self.key_monitor.start()
 
     def _check_duration(self) -> bool:
         if self.start_time is None:
@@ -65,6 +65,8 @@ class VoiceRecorder:
         self._save_to_file(filename)
 
     def _cleanup(self):
+        if self.key_monitor:
+            self.key_monitor.stop()
         self.stream.stop_stream()
         self.stream.close()
         self.p.terminate()

@@ -9,6 +9,7 @@ A simple command-line tool for voice recording and transcription using OpenAI's 
 - Automatic clipboard copy of transcription
 - GPT-4 powered QA mode
 - Smart grammar correction mode
+- Text-to-Speech voiceover mode
 - Desktop notifications
 - Configurable recording settings
 

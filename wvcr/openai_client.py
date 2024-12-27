@@ -13,6 +13,7 @@ class ProcessingMode(Enum):
     TRANSCRIBE = "transcribe"
     ANSWER = "answer"
     EXPLAIN = "explain"
+    VOICEOVER = "voiceover"
 
 @dataclass
 class ProcessingKeywords:

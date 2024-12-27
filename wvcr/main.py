@@ -6,10 +6,11 @@ from datetime import datetime
 
 import pyperclip
 
-from wvcr.config import AudioConfig, OUTPUT, OAIConfig
+from wvcr.config import OUTPUT, OAIConfig
 from wvcr.notification_manager import NotificationManager
 from wvcr.openai_client import transcribe, ProcessingMode, process_text, MODE_DIRS
 from wvcr.recorder import VoiceRecorder
+from wvcr.voiceover import voiceover_clipboard
 
 
 from loguru import logger
@@ -20,12 +21,12 @@ logger.add(
 
 
 class TranscriptionHandler:
-    def __init__(self, model: str = None):
-        self.notifier = NotificationManager()
+    def __init__(self, model, notifier):
+        self.notifier = notifier
         self.oai_config = OAIConfig(model)
 
-    def _send_notification(self, text: str):
-        self.notifier.send_notification('Voice Transcription', text, font_size='28px')
+    def _send_notification(self, text: str, cutoff=None):
+        self.notifier.send_notification('Voice Transcription', text, font_size='28px', cutoff=cutoff)
 
     def _get_output_dir(self, mode: ProcessingMode) -> Path:
         dst = OUTPUT / mode.value.lower()
@@ -49,14 +50,15 @@ class TranscriptionHandler:
                 f.write(processed_text)
 
         pyperclip.copy(processed_text)
-        self._send_notification(processed_text)
+        cutoff = 100 if mode == ProcessingMode.TRANSCRIBE else None
+        self._send_notification(processed_text, cutoff=cutoff)
         
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Voice recording and transcription tool')
     parser.add_argument('mode', nargs='?', default='transcribe',
-                       choices=['transcribe', 'answer', 'explain'],
+                       choices=['transcribe', 'answer', 'explain', 'voiceover'],
                        help='Processing mode (default: transcribe)')
     parser.add_argument('--model', default=None,
                        help='GPT model to use (uses default from config if not specified)')
@@ -69,32 +71,43 @@ def get_processing_mode(args) -> ProcessingMode:
     mode_map = {
         'transcribe': ProcessingMode.TRANSCRIBE,
         'answer': ProcessingMode.ANSWER,
-        'explain': ProcessingMode.EXPLAIN
+        'explain': ProcessingMode.EXPLAIN,
+        'voiceover': ProcessingMode.VOICEOVER
     }
     return mode_map[args.mode]
 
 def main():
+    args = parse_args()
+    mode = get_processing_mode(args)
+    notifier = NotificationManager()
+
     try:
-        args = parse_args()
-        mode = get_processing_mode(args)
-        
+        if mode == ProcessingMode.VOICEOVER:
+            audio_file = OUTPUT / f"voiceover/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.wav"
+            audio_file.parent.mkdir(exist_ok=True, parents=True)
+            notifier.send_notification('Voiceover started', 'Voiceover started, press escape to stop')
+            if voiceover_clipboard(audio_file, OAIConfig(), notifier=notifier, play=True):
+                logger.info(f"Voiceover saved to {audio_file}")
+            return
+
+
         logger.debug("Starting voice recording")
-        config = AudioConfig()
-        audio_file = OUTPUT / f"records/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.{config.OUTPUT_FORMAT}"
+        audio_file = OUTPUT / f"records/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.mp3"
         audio_file.parent.mkdir(exist_ok=True, parents=True)
 
-        recorder = VoiceRecorder(config)
+        recorder = VoiceRecorder(notifier)
         recorder.record(audio_file)
         logger.debug(f"Recording saved to {audio_file}")
 
-        handler = TranscriptionHandler(model=args.model)
+        handler = TranscriptionHandler(args.model, notifier)
         handler.handle_transcription(audio_file, mode)
+
 
     except KeyboardInterrupt:
         logger.info("Program terminated by user")
         sys.exit(0)
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.exception(f"An error occurred: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
