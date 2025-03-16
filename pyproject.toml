@@ -16,20 +16,20 @@ dependencies = [
     "openai",
     "wave",
     "pyperclip",
+    "pynput",
+    "python-dotenv",
+    "plyer"
 ]
 
 [project.scripts]
 wvcr = "wvcr.main:main"
 
-[tool.hatch.build.targets.wheel]
+[tool.setuptools]
+package-dir = {"" = "src"}
 packages = ["wvcr"]
-
-[tool.hatch.build]
-artifacts = [
-    "data/",
-]
 
 [tool.pytest.ini_options]
 pythonpath = [
+  "src",
   "."
 ]

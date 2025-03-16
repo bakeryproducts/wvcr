@@ -1,6 +1,6 @@
 .env
 # Project specific
-output/
+src/output/
 input/
 tests/data
 
