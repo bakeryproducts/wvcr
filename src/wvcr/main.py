@@ -62,6 +62,8 @@ def parse_args():
                        help='Processing mode (default: transcribe)')
     parser.add_argument('--model', default=None,
                        help='GPT model to use (uses default from config if not specified)')
+    parser.add_argument('--evdev', action='store_true', 
+                       help='Use evdev for keyboard monitoring (for Wayland systems)')
     return parser.parse_args()
 
 def get_processing_mode(args) -> ProcessingMode:
@@ -86,7 +88,7 @@ def main():
             audio_file = OUTPUT / f"voiceover/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.wav"
             audio_file.parent.mkdir(exist_ok=True, parents=True)
             notifier.send_notification('Voiceover started', 'Voiceover started, press escape to stop')
-            if voiceover_clipboard(audio_file, OAIConfig(), notifier=notifier, play=True):
+            if voiceover_clipboard(audio_file, OAIConfig(), notifier=notifier, play=True, use_evdev=args.evdev):
                 logger.info(f"Voiceover saved to {audio_file}")
             return
 
@@ -95,7 +97,7 @@ def main():
         audio_file = OUTPUT / f"records/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.mp3"
         audio_file.parent.mkdir(exist_ok=True, parents=True)
 
-        recorder = VoiceRecorder(notifier)
+        recorder = VoiceRecorder(notifier, use_evdev=args.evdev)
         recorder.record(audio_file)
         logger.debug(f"Recording saved to {audio_file}")
 

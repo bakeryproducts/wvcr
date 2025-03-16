@@ -26,15 +26,20 @@ class NotificationManager:
         message = f"<span color='{color}' font='{font_size}'><i><b>{text}</b></i></span>"
         
         try:
+            # notification.notify(
+            #     title=title,
+            #     message=message,
+            #     app_name='WVCR',
+            #     app_icon=None,
+            #     timeout=timeout,
+            #     ticker='WVCR Notification',
+            # )
             notification.notify(
                 title=title,
-                message=message,
-                app_name='WVCR',
-                app_icon=None,
-                timeout=timeout,
-                ticker='WVCR Notification',
+                message=text,
             )
         except Exception as e:
+            logger.exception(e)
             logger.error(f"Failed to send notification: {e}")
 
     def test_notification(self):

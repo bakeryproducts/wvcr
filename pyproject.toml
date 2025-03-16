@@ -21,6 +21,9 @@ dependencies = [
     "plyer"
 ]
 
+[project.optional-dependencies]
+wayland = ["evdev"]
+
 [project.scripts]
 wvcr = "wvcr.main:main"
 

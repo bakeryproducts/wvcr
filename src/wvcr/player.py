@@ -4,7 +4,7 @@ import pyaudio
 from pathlib import Path
 from loguru import logger
 
-from wvcr.common import KeyMonitor
+from wvcr.common import create_key_monitor
 from wvcr.config import AudioConfig
 
 
@@ -36,7 +36,8 @@ class SpeechPlayer:
         # self._send_notification('Playback Started', 'playing')
 
         if stop_on_key:
-            key_monitor = KeyMonitor(self.config.STOP_KEY, lambda: setattr(self, 'playing', False))
+            # key_monitor = KeyMonitor(self.config.STOP_KEY, lambda: setattr(self, 'playing', False))
+            key_monitor = create_key_monitor(self.config.STOP_KEY, lambda: setattr(self, 'playing', False))
             key_monitor.start()
 
         chunk_size = self.config.CHUNK
