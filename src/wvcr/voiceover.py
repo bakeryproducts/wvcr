@@ -10,7 +10,7 @@ from wvcr.config import AudioConfig, OAIConfig
 from wvcr.common import create_key_monitor
 from wvcr.notification_manager import NotificationManager
 
-from wvcr.player import SpeechPlayer
+# from wvcr.player import SpeechPlayer
 
 
 
@@ -28,29 +28,6 @@ def generate_speech(text: str, output_file: Path, config):
     except Exception as e:
         logger.exception(f"Could not generate speech: {str(e)}")
         return False
-
-
-# def play_speech(input_file: Path, notifier, stop_on_key=True):
-#     """Play generated speech file."""
-#     player = SpeechPlayer(notifier)
-#     player.play(input_file, stop_on_key)
-
-
-# def tts_to_file(text: str, output_file: Path, config: OAIConfig):
-#     """Generate audio from text using TTS and save to a file."""
-#     try:
-#         with  config.client.audio.speech.with_streaming_response.create(
-#             model="tts-1",
-#             voice="onyx",
-#             input=text
-#         ) as response:
-#             for chunk in response.iter_bytes():
-#                 output_file.write_bytes(chunk)
-            
-#         return True
-#     except Exception as e:
-#         logger.exception(f"TTS error: {e}")
-#         return False
 
 
 def save_pcm_to_wav(pcm_data, output_file, sample_rate=24000, channels=1, sample_width=2):
@@ -71,16 +48,16 @@ def write_audio(stream, text, config, output_file=None, stop_event=None):
         pcm_data = bytearray() if output_file else None
         
         with config.client.audio.speech.with_streaming_response.create(
-            model="tts-1",
-            voice="onyx",
-            input=text,
-            response_format="pcm"
-        ) as response:
+                model="tts-1",
+                voice="onyx",
+                input=text,
+                response_format="pcm") as response:
+
             for chunk in response.iter_bytes(1024):
                 # Check if stop event is set before processing each chunk
                 if stop_event and stop_event.is_set():
                     logger.info("Stopping audio playback as requested")
-                    return False
+                    break
                 
                 stream.write(chunk)
                 if pcm_data is not None:
@@ -108,7 +85,6 @@ def play_audio(text, config, output, stop_event=None):
         # Write audio to stream
         result = write_audio(stream, text, config, output, stop_event)
         
-        # Close stream
         stream.stop_stream()
         stream.close()
         p.terminate()
