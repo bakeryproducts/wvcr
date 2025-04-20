@@ -30,6 +30,23 @@ def generate_speech(text: str, output_file: Path, config):
         return False
 
 
+def generate_gpt_speech(text: str, output_file: Path, config):
+    """Generate speech from text using OpenAI GPT TTS API."""
+    try:
+        response = config.client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice="coral",
+            input=text,
+            instructions="Speak in a natural and engaging tone.",
+            response_format="wav",
+        )
+        response.stream_to_file(str(output_file))
+        return True
+    except Exception as e:
+        logger.exception(f"Could not generate GPT speech: {str(e)}")
+        return False
+
+
 def save_pcm_to_wav(pcm_data, output_file, sample_rate=24000, channels=1, sample_width=2):
     """Convert PCM data to a WAV file and save it."""
     try:
@@ -43,25 +60,65 @@ def save_pcm_to_wav(pcm_data, output_file, sample_rate=24000, channels=1, sample
         logger.exception(f"Error saving WAV file: {e}")
         return False
 
-def write_audio(stream, text, config, output_file=None, stop_event=None):
+def _stream_audio_with_buffer(response, stream, pcm_data, stop_event, buffer_size=5):
+    """Helper function to handle streaming audio with buffer to prevent stuttering."""
+    initial_buffer = []
+    buffering = True
+    
+    for chunk in response.iter_bytes(1024):
+        if stop_event and stop_event.is_set():
+            logger.info("Stopping audio playback as requested")
+            break
+        
+        if buffering:
+            initial_buffer.append(chunk)
+            if len(initial_buffer) >= buffer_size:
+                # Play buffered audio all at once
+                for buffered_chunk in initial_buffer:
+                    stream.write(buffered_chunk)
+                    if pcm_data is not None:
+                        pcm_data.extend(buffered_chunk)
+                buffering = False
+        else:
+            stream.write(chunk)
+            if pcm_data is not None:
+                pcm_data.extend(chunk)
+    
+    return True
+
+def write_audio(stream, text, config, output_file=None, stop_event=None, use_gpt_tts=True, buffer_size=5):
+    """Write audio to stream and optionally save to file."""
     try:
         pcm_data = bytearray() if output_file else None
-        
-        with config.client.audio.speech.with_streaming_response.create(
-                model="tts-1",
-                voice="onyx",
-                input=text,
-                response_format="pcm") as response:
 
-            for chunk in response.iter_bytes(1024):
-                # Check if stop event is set before processing each chunk
-                if stop_event and stop_event.is_set():
-                    logger.info("Stopping audio playback as requested")
-                    break
-                
-                stream.write(chunk)
-                if pcm_data is not None:
-                    pcm_data.extend(chunk)
+        # Create the response with appropriate parameters
+        create_params = {
+            "input": text,
+            "response_format": "pcm"
+        }
+        
+        if use_gpt_tts:
+            model = "gpt-4o-mini-tts"
+            voice = "sage"
+            instructions = """
+Voice Affect: Low, velvety, and sultry; exude intimacy and allure.
+Tone: Deeply sensual and mysterious, with a subtle, teasing edge that invites curiosity.
+Pacing: Slow and deliberate, with lingering pauses that draw the listener in, creating a sense of anticipation.
+Emotion: Intense and smoldering—voice should carry a soft, breathy quality, hinting at restrained passion.
+Emphasis: Accentuate evocative phrases ("skin tingling," "breath catching," "whispers in the dark") to heighten the seductive atmosphere.
+Pronunciation: Smooth, flowing articulation with elongated vowels and a soft, caressing touch to consonants.
+Pauses: Use lingering, intimate pauses after phrases like "breath catching in the stillness," and especially before the final line, to leave the listener yearning for more.
+"""
+            create_params["instructions"] = instructions
+        else:
+            model = "tts-1"
+            voice = "onyx"
+
+        create_params["voice"] = voice
+        create_params["model"] = model
+            
+        with config.client.audio.speech.with_streaming_response.create(**create_params) as response:
+            _stream_audio_with_buffer(response, stream, pcm_data, stop_event, buffer_size)
 
         # If we need to save to a file, convert the collected PCM data to WAV
         if output_file and pcm_data:
@@ -73,7 +130,7 @@ def write_audio(stream, text, config, output_file=None, stop_event=None):
         return False
 
 
-def play_audio(text, config, output, stop_event=None):
+def play_audio(text, config, output, stop_event=None, use_gpt_tts=True):
     """Play audio file using PyAudio."""
     try:
         p = pyaudio.PyAudio()
@@ -83,7 +140,7 @@ def play_audio(text, config, output, stop_event=None):
                         output=True)
 
         # Write audio to stream
-        result = write_audio(stream, text, config, output, stop_event)
+        result = write_audio(stream, text, config, output, stop_event, use_gpt_tts)
         
         stream.stop_stream()
         stream.close()
@@ -94,7 +151,7 @@ def play_audio(text, config, output, stop_event=None):
         return False
 
 
-def voiceover_clipboard(output_file: Path, config: OAIConfig, notifier=None, play=False, use_evdev=False):
+def voiceover_clipboard(output_file: Path, config: OAIConfig, notifier=None, play=False, use_evdev=False, use_gpt_tts=True):
     """Get text from clipboard, convert to speech, and save to file."""
     if notifier is None:
         notifier = NotificationManager()
@@ -125,7 +182,7 @@ def voiceover_clipboard(output_file: Path, config: OAIConfig, notifier=None, pla
             key_monitor.start()
             
             # Play in separate thread so we can monitor for stop key
-            play_thread = threading.Thread(target=play_audio, args=(text, config, output_file, stop_playback))
+            play_thread = threading.Thread(target=play_audio, args=(text, config, output_file, stop_playback, use_gpt_tts))
             play_thread.start()
             
             # Wait for playback to finish or stop key
@@ -137,7 +194,7 @@ def voiceover_clipboard(output_file: Path, config: OAIConfig, notifier=None, pla
             # Just save to file without playing
             p = pyaudio.PyAudio()
             stream = p.open(format=8, channels=1, rate=24_000, output=True)
-            write_audio(stream, text, config, output_file)
+            write_audio(stream, text, config, output_file, use_gpt_tts=use_gpt_tts)
             stream.stop_stream()
             stream.close()
             p.terminate()
