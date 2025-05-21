@@ -103,11 +103,10 @@ def write_audio(stream, text, config, output_file=None, stop_event=None, use_gpt
             instructions = """
 Voice Affect: Low, velvety, and sultry; exude intimacy and allure.
 Tone: Deeply sensual and mysterious, with a subtle, teasing edge that invites curiosity.
-Pacing: Slow and deliberate, with lingering pauses that draw the listener in, creating a sense of anticipation.
+Pacing: Fast and deliberate
 Emotion: Intense and smoldering—voice should carry a soft, breathy quality, hinting at restrained passion.
 Emphasis: Accentuate evocative phrases ("skin tingling," "breath catching," "whispers in the dark") to heighten the seductive atmosphere.
 Pronunciation: Smooth, flowing articulation with elongated vowels and a soft, caressing touch to consonants.
-Pauses: Use lingering, intimate pauses after phrases like "breath catching in the stillness," and especially before the final line, to leave the listener yearning for more.
 """
             create_params["instructions"] = instructions
         else:

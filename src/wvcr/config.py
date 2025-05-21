@@ -35,7 +35,8 @@ else:
 @dataclass
 class OAIConfig:
     STT_MODEL: str = "whisper-1"
-    GPT_MODEL: str = "gpt-4o-2024-11-20"
+    # GPT_MODEL: str = "gpt-4o-2024-11-20"
+    GPT_MODEL: str = "gpt-4.1-2025-04-14"
     temperature: float = 0.0
     client = None
     
