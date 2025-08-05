@@ -2,6 +2,7 @@ import wave
 import pyaudio
 import threading
 import time
+import subprocess
 from pathlib import Path
 
 import pyperclip
@@ -52,12 +53,13 @@ class VoiceRecorder:
         logger.info("Recording stopped")
         self.notifier.send_notification("Recording", "Recording finished")
     
-    def record(self, output_file: Path) -> Path:
+    def record(self, output_file: Path, format: str = "wav") -> Path:
         """
         Start recording audio, stopping when escape key is pressed.
         
         Args:
             output_file: Path to save the recorded audio
+            format: Audio format to save ('wav' or 'mp3')
             
         Returns:
             Path to the saved audio file
@@ -78,8 +80,11 @@ class VoiceRecorder:
         record_thread.join()
         key_monitor.stop()
         
-        # Save the recording
-        self._save_wav(output_file)
+        # Save the recording in the specified format
+        if format.lower() == "mp3":
+            self._save_mp3(output_file)
+        else:
+            self._save_wav(output_file)
         
         return output_file
     
@@ -99,3 +104,36 @@ class VoiceRecorder:
         p.terminate()
         
         logger.info(f"Audio saved to {output_file}")
+    
+    def _save_mp3(self, output_file: Path):
+        """Save the recorded audio frames to an MP3 file via WAV conversion."""
+        # First save as temporary WAV file
+        temp_wav = output_file.with_suffix('.tmp.wav')
+        self._save_wav(temp_wav)
+        
+        # Convert WAV to MP3 using ffmpeg
+        cmd = [
+            'ffmpeg', '-i', str(temp_wav),
+            '-codec:a', 'libmp3lame',
+            '-b:a', '128k',
+            '-y',
+            str(output_file)
+        ]
+        
+        try:
+            subprocess.run(cmd, check=True, capture_output=True)
+            logger.info(f"Audio saved as MP3 to {output_file}")
+            
+            # Clean up temporary WAV file
+            temp_wav.unlink(missing_ok=True)
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error converting to MP3: {e}")
+            # If conversion fails, keep the WAV file as fallback
+            temp_wav.rename(output_file.with_suffix('.wav'))
+            raise
+        except FileNotFoundError:
+            logger.error("ffmpeg not found. Please install ffmpeg to save MP3 files.")
+            # Keep the WAV file as fallback
+            temp_wav.rename(output_file.with_suffix('.wav'))
+            raise

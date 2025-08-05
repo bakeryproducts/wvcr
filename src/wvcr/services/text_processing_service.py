@@ -54,7 +54,6 @@ def answer_question(transcript: str, config: OAIConfig) -> str:
 
 
 def explain_text(transcript: str, config: OAIConfig) -> str:
-    """Объяснить текст в контексте содержимого буфера обмена."""
     logger.info(f"Explaining with context: {transcript}")
 
     messages = Messages()
@@ -77,6 +76,7 @@ def explain_text(transcript: str, config: OAIConfig) -> str:
             temperature=config.temperature,
             messages=messages.get_messages()
         )
+        logger.debug(f"Response usage: {response.usage}")
         return response.choices[0].message.content
     except Exception as e:
         logger.exception(f"Could not process explanation: {str(e)}")
@@ -84,7 +84,6 @@ def explain_text(transcript: str, config: OAIConfig) -> str:
 
 
 def detect_mode_from_text(transcript: str) -> str:
-    """Определить режим обработки на основе ключевых слов в тексте."""
     lower_transcript = transcript.lower()
     lower_transcript = re.sub(r'[^\w\s]', '', lower_transcript)
     

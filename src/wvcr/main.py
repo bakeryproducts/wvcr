@@ -20,7 +20,7 @@ logger.add(
 def parse_args():
     parser = argparse.ArgumentParser(description='Voice recording and transcription tool')
     parser.add_argument('mode', nargs='?', default='transcribe',
-                       choices=['transcribe', 'answer', 'explain', 'voiceover'],
+                       choices=['transcribe', 'transcribe_url', 'answer', 'explain', 'voiceover'],
                        help='Processing mode (default: transcribe)')
     parser.add_argument('--model', default=None,
                        help='GPT model to use (uses default from config if not specified)')
@@ -34,6 +34,7 @@ def get_processing_mode(args) -> ProcessingMode:
     
     mode_map = {
         'transcribe': ProcessingMode.TRANSCRIBE,
+        'transcribe_url': ProcessingMode.TRANSCRIBE_URL,
         'answer': ProcessingMode.ANSWER,
         'explain': ProcessingMode.EXPLAIN,
         'voiceover': ProcessingMode.VOICEOVER
@@ -54,12 +55,19 @@ def main():
             if output_file:
                 logger.info(f"Voiceover saved to {output_file}")
             return
+        
+        if mode == ProcessingMode.TRANSCRIBE_URL:
+            result_text, output_file = mode_handler.process()
+            if output_file:
+                logger.info(f"URL transcription saved to {output_file}")
+            return
 
         logger.debug("Starting voice recording")
-        audio_file = create_audio_file_path("records", "mp3")
+        format = 'mp3'
+        audio_file = create_audio_file_path("records", extension=format)
 
         recorder = VoiceRecorder(notifier, use_evdev=args.evdev)
-        recorder.record(audio_file)
+        recorder.record(audio_file, format=format)
         logger.debug(f"Recording saved to {audio_file}")
 
         result_text, output_file = mode_handler.process(audio_file)

@@ -99,19 +99,16 @@ def write_audio(stream, text, config, output_file=None, stop_event=None, use_gpt
         
         if use_gpt_tts:
             model = "gpt-4o-mini-tts"
-            voice = "sage"
+            voice = "alloy"
             instructions = """
-Voice Affect: Low, velvety, and sultry; exude intimacy and allure.
-Tone: Deeply sensual and mysterious, with a subtle, teasing edge that invites curiosity.
+Voice Affect: Low, smoove, fast
 Pacing: Fast and deliberate
-Emotion: Intense and smoldering—voice should carry a soft, breathy quality, hinting at restrained passion.
-Emphasis: Accentuate evocative phrases ("skin tingling," "breath catching," "whispers in the dark") to heighten the seductive atmosphere.
-Pronunciation: Smooth, flowing articulation with elongated vowels and a soft, caressing touch to consonants.
+Pronunciation: Smooth, flowing articulation
 """
             create_params["instructions"] = instructions
         else:
             model = "tts-1"
-            voice = "onyx"
+            voice = "alloy"
 
         create_params["voice"] = voice
         create_params["model"] = model

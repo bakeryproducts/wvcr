@@ -18,7 +18,10 @@ dependencies = [
     "pyperclip",
     "pynput",
     "python-dotenv",
-    "plyer"
+    "plyer",
+    "requests",
+    "yt-dlp",
+    "ffmpeg-python"
 ]
 
 [project.optional-dependencies]

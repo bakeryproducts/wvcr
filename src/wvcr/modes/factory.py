@@ -1,7 +1,7 @@
 from wvcr.config import OAIConfig
 from wvcr.notification_manager import NotificationManager
 from .base import BaseMode
-from . import ProcessingMode, TranscribeMode, AnswerMode, ExplainMode, VoiceoverMode
+from . import ProcessingMode, TranscribeMode, TranscribeUrlMode, AnswerMode, ExplainMode, VoiceoverMode
 
 
 class ModeFactory:
@@ -10,6 +10,7 @@ class ModeFactory:
     def create_mode(mode: ProcessingMode, config: OAIConfig, notifier: NotificationManager) -> BaseMode:
         mode_classes = {
             ProcessingMode.TRANSCRIBE: TranscribeMode,
+            ProcessingMode.TRANSCRIBE_URL: TranscribeUrlMode,
             ProcessingMode.ANSWER: AnswerMode,
             ProcessingMode.EXPLAIN: ExplainMode,
             ProcessingMode.VOICEOVER: VoiceoverMode,

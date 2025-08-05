@@ -21,7 +21,6 @@ def save_text_to_file(text: str, file_path: Path) -> None:
 
 
 def create_audio_file_path(mode: str, extension: str = "mp3") -> Path:
-    """Создать путь для аудио файла."""
     timestamp = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
     if mode.lower() == "voiceover":
         output_dir = OUTPUT / "voiceover"
@@ -29,5 +28,13 @@ def create_audio_file_path(mode: str, extension: str = "mp3") -> Path:
     else:
         output_dir = OUTPUT / "records"
     
+    output_dir.mkdir(exist_ok=True, parents=True)
+    return output_dir / f"{timestamp}.{extension}"
+
+
+def create_download_audio_file_path(extension: str = "mp3") -> Path:
+    """Создать путь для скачанного аудио файла."""
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+    output_dir = OUTPUT / "download_audio"
     output_dir.mkdir(exist_ok=True, parents=True)
     return output_dir / f"{timestamp}.{extension}"
