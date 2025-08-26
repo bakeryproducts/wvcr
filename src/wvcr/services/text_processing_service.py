@@ -1,9 +1,11 @@
 import re
+
 import pyperclip
 from loguru import logger
-from wvcr.config import OAIConfig
-from wvcr.messages import Messages, get_prev_files, load_previous_responses
+
 from wvcr.config import OUTPUT
+from wvcr.config import OAIConfig, GeminiConfig
+from wvcr.messages import Messages, get_prev_files, load_previous_responses
 
 
 def answer_question(transcript: str, config: OAIConfig) -> str:
@@ -50,34 +52,53 @@ def answer_question(transcript: str, config: OAIConfig) -> str:
         return transcript
 
 
-def explain_text(transcript: str, config: OAIConfig) -> str:
+def explain(transcript: str, config: OAIConfig | GeminiConfig) -> str:
     logger.info(f"Explaining with context: {transcript}")
-
     messages = Messages()
     messages.clear_history()
-    clipboard_content = pyperclip.paste()
-    
+
     messages.add_message(
         "system", 
         "You are a assistant. Please use the following context and proceed to user's question. "
         "Be concise and brief."
     )
     messages.add_message("user", transcript)
-    messages.add_message("user", clipboard_content)
+
+    clipboard_content = pyperclip.paste()
+    if clipboard_content:
+        messages.add_message("user", clipboard_content)
+    else:
+        # try image
+        from wvcr.services._clipboard import _paste_linux_wlpaste
+        image = _paste_linux_wlpaste()
+        if image:
+            messages.add_image(image)
 
     messages._print()
 
+    if isinstance(config, OAIConfig):
+        return explain_oai(messages, config)
+    elif isinstance(config, GeminiConfig):
+        raise NotImplementedError("GeminiConfig is not supported yet.")
+        # return explain_text_gemini(messages, config)
+    return transcript
+
+
+def explain_oai(messages, config: OAIConfig) -> str:
+    client = config.get_client()
+
     try:
-        response = config.client.chat.completions.create(
-            model=config.GPT_MODEL,
-            temperature=config.temperature,
-            messages=messages.get_messages()
+        response = client.chat.completions.create(
+            model=config.EXPLAIN_MODEL,
+            # temperature=config.temperature,
+            reasoning_effort='minimal',
+            messages=messages.to_oai()  # changed: include image parts in proper format
         )
         logger.debug(f"Response usage: {response.usage}")
         return response.choices[0].message.content
     except Exception as e:
         logger.exception(f"Could not process explanation: {str(e)}")
-        return transcript
+        return ""
 
 
 def detect_mode_from_text(transcript: str) -> str:

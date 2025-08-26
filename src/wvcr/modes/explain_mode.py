@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 
 from .base import BaseMode
 from ..services.transcription_service import transcribe_audio
-from ..services.text_processing_service import explain_text
+from ..services.text_processing_service import explain
 from ..services.file_service import save_text_to_file, create_output_file_path
 
 
@@ -15,7 +15,7 @@ class ExplainMode(BaseMode):
         transcribe_file = create_output_file_path("transcribe")
         save_text_to_file(transcription, transcribe_file)
         
-        explanation = explain_text(transcription, self.config)
+        explanation = explain(transcription, self.config)
         
         explain_file = create_output_file_path("explain")
         save_text_to_file(explanation, explain_file)
