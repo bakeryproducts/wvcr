@@ -6,7 +6,7 @@ import pyaudio
 import threading
 import io
 
-from wvcr.config import AudioConfig, OAIConfig
+from wvcr.config import PlayerAudioConfig, OAIConfig
 from wvcr.common import create_key_monitor
 from wvcr.notification_manager import NotificationManager
 
@@ -173,7 +173,7 @@ def voiceover_clipboard(output_file: Path, config: OAIConfig, notifier=None, pla
                 notifier.send_notification("Playback", "Playback stopped")
             
             # Start key monitor
-            audio_config = AudioConfig()
+            audio_config = PlayerAudioConfig()
             key_monitor = create_key_monitor(audio_config.STOP_KEY, stop_callback, prefer_evdev=use_evdev)
             key_monitor.start()
             

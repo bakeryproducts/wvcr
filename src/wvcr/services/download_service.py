@@ -1,4 +1,3 @@
-import os
 import re
 import tempfile
 import subprocess
@@ -6,11 +5,10 @@ from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import urlparse
 
-import yt_dlp
 import requests
 from loguru import logger
 
-from ..services.file_service import create_download_audio_file_path
+from wvcr.services.file_service import create_download_audio_file_path
 
 
 class DownloadService:
@@ -39,6 +37,8 @@ class DownloadService:
     
 
     def _download_youtube_audio( self, url: str, output_format: str = "wav") -> Path:
+        import yt_dlp
+
         output_format = 'wav'
         output_file = self.temp_dir / f"youtube_audio.{output_format}"
         
@@ -52,7 +52,8 @@ class DownloadService:
             }],
             # 'quiet': True,
             # 'no_warnings': True,
-            'force_ipv4': True
+            'force_ipv4': True,
+            'noplaylist': True  # Only download the specific video, not the playlist
         }
         
         try:

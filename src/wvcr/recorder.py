@@ -1,3 +1,6 @@
+# DEPRECATED
+# Will be removed
+
 import wave
 import pyaudio
 import threading

@@ -34,8 +34,8 @@ else:
 
 @dataclass
 class OAIConfig:
-    # STT_MODEL: str = "whisper-1"
-    STT_MODEL: str = "gpt-4o-transcribe"
+    STT_MODEL: str = "whisper-1"
+    # STT_MODEL: str = "gpt-4o-transcribe" # wont support 16 kHz for some reason
     # GPT_MODEL: str = "gpt-4o-2024-11-20"
     GPT_MODEL: str = "gpt-4.1-2025-04-14"
     temperature: float = 0.0
@@ -48,15 +48,24 @@ class OAIConfig:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.client = client
 
+# New separate configs
 @dataclass
-class AudioConfig:
+class RecorderAudioConfig:
+    """Configuration for audio recording (microphone capture)."""
     CHUNK: int = 1024
     FORMAT: int = pyaudio.paInt16
     CHANNELS: int = 1
+    # RATE: int = 44100
+    RATE: int = 16000
+    STOP_KEY: Key = Key.esc
+    MAX_DURATION: int = 120  # seconds
+    ENABLE_VAD: bool = True  
+
+@dataclass
+class PlayerAudioConfig:
+    """Configuration for audio playback."""
+    CHUNK: int = 1024        # playback buffer size
+    FORMAT: int = pyaudio.paInt16
+    CHANNELS: int = 1
     RATE: int = 44100
-    STOP_KEY: Key = Key.esc  # Changed from '\x1b' to Key.esc
-    MAX_DURATION: int = 120  # maximum duration in seconds (2 minutes)
-    # Lower quality settings for smaller files
-    LOW_QUALITY_RATE: int = 16000  # CD quality is 44100, 16000 is good for voice
-    LOW_QUALITY_FORMAT: int = pyaudio.paInt16  # Could use paInt8 for even smaller files
-    LOW_QUALITY_CHUNK: int = 1024  # Smaller chunk size
+    STOP_KEY: Key = Key.esc

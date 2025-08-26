@@ -1,16 +1,15 @@
-
 import wave
 import pyaudio
 from pathlib import Path
 from loguru import logger
 
 from wvcr.common import create_key_monitor
-from wvcr.config import AudioConfig
+from wvcr.config import PlayerAudioConfig
 
 
 class SpeechPlayer:
     def __init__(self, notifier):
-        self.config = AudioConfig()
+        self.config = PlayerAudioConfig()
         self.playing = False
         self.notifier = notifier
 

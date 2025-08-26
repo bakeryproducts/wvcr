@@ -1,5 +1,3 @@
-"""Сервис для обработки текста через OpenAI API."""
-
 import re
 import pyperclip
 from loguru import logger
@@ -9,7 +7,6 @@ from wvcr.config import OUTPUT
 
 
 def answer_question(transcript: str, config: OAIConfig) -> str:
-    """Ответить на вопрос из транскрипции."""
     logger.info(f"Answering question: {transcript}")
 
     messages = Messages()

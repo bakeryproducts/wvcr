@@ -1,20 +1,30 @@
 #!/usr/bin/env python3
+import time
+start = time.monotonic()
 import sys
 import argparse
 from pathlib import Path
+import multiprocessing as mp
 
 from wvcr.config import OUTPUT, OAIConfig
 from wvcr.notification_manager import NotificationManager
 from wvcr.modes import ProcessingMode, ModeFactory
-from wvcr.recorder import VoiceRecorder
+
+from wvcr.ipc_recorder import IPCVoiceRecorder
 from wvcr.services import create_audio_file_path
 
+if mp.get_start_method(allow_none=True) != 'spawn':
+    try:
+        mp.set_start_method('spawn', force=True)
+    except RuntimeError:
+        pass
 
 from loguru import logger
 logger.add(
     OUTPUT / 'logs' / "{time:YYYY_MM}.log",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
 )
+logger.debug(f"Startup time: {time.monotonic() - start:.2f} seconds")
 
 
 def parse_args():
@@ -63,10 +73,11 @@ def main():
             return
 
         logger.debug("Starting voice recording")
-        format = 'mp3'
+        # format = 'mp3'
+        format = 'wav'
         audio_file = create_audio_file_path("records", extension=format)
 
-        recorder = VoiceRecorder(notifier, use_evdev=args.evdev)
+        recorder = IPCVoiceRecorder(notifier, use_evdev=args.evdev)
         recorder.record(audio_file, format=format)
         logger.debug(f"Recording saved to {audio_file}")
 
