@@ -17,9 +17,16 @@ class Notify(Step):
         ctx.notifier.send_notification(self.title, self.text)
 
 class NotifyTranscription(Notify):
-    requires = {"transcript"}
+    def __init__(self, title: str = "WVCR", key: str = "transcript", cutoff: int = 100):
+        super().__init__(title=title)
+        self.key = key
+        self.cutoff = cutoff
+        self.requires = {key}
 
     def execute(self, state, ctx):
-        txt = state.get("transcript")
-        cutoff = 100
-        ctx.notifier.send_notification(self.title, txt[:cutoff] + ("..." if len(txt) > cutoff else ""))
+        txt = state.get(self.key, "") or ""
+        cutoff = self.cutoff
+        if not isinstance(txt, str):
+            txt = str(txt)
+        snippet = txt[:cutoff] + ("..." if len(txt) > cutoff else "")
+        ctx.notifier.send_notification(self.title, snippet)

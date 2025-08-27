@@ -1,6 +1,7 @@
 import re
+from pathlib import Path
 
-import pyperclip
+# import pyperclip
 from loguru import logger
 
 from wvcr.config import OUTPUT
@@ -52,27 +53,36 @@ def answer_question(transcript: str, config: OAIConfig) -> str:
         return transcript
 
 
-def explain(transcript: str, config: OAIConfig | GeminiConfig) -> str:
+def explain(transcript: str, config: OAIConfig | GeminiConfig, thing: str) -> str:
     logger.info(f"Explaining with context: {transcript}")
     messages = Messages()
     messages.clear_history()
 
     messages.add_message(
-        "system", 
+        "system",
         "You are a assistant. Please use the following context and proceed to user's question. "
         "Be concise and brief."
     )
-    messages.add_message("user", transcript)
+    if transcript:
+        messages.add_message("user", transcript)
 
-    clipboard_content = pyperclip.paste()
-    if clipboard_content:
-        messages.add_message("user", clipboard_content)
-    else:
-        # try image
-        from wvcr.services._clipboard import _paste_linux_wlpaste
-        image = _paste_linux_wlpaste()
-        if image:
-            messages.add_image(image)
+    if thing:
+        p = Path(thing)
+        if p.exists() and p.is_file():
+            suffix = p.suffix.lower()
+            try:
+                if suffix in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+                    data = p.read_bytes()
+                    messages.add_image(data)
+                else:
+                    text = p.read_text(encoding="utf-8", errors="ignore")
+                    if text.strip():
+                        messages.add_message("user", text.strip())
+            except Exception as e:
+                logger.warning(f"Failed to load thing file '{p}': {e}; using literal string")
+                messages.add_message("user", thing)
+        else:
+            messages.add_message("user", thing)
 
     messages._print()
 
@@ -80,8 +90,7 @@ def explain(transcript: str, config: OAIConfig | GeminiConfig) -> str:
         return explain_oai(messages, config)
     elif isinstance(config, GeminiConfig):
         raise NotImplementedError("GeminiConfig is not supported yet.")
-        # return explain_text_gemini(messages, config)
-    return transcript
+    return ""
 
 
 def explain_oai(messages, config: OAIConfig) -> str:

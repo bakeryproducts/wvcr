@@ -4,6 +4,8 @@ defaults:
   - schema/root
   - pipeline: transcribe
   - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
 
 # The selected pipeline's structured config will populate under this key.
 # Additional overrides can be applied on the command line.

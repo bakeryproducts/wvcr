@@ -46,6 +46,8 @@ class AnswerConfig:
 @dataclass
 class ExplainConfig:
     context: ContextConfig = field(default_factory=ContextConfig)
+    instruction: str | None = None  # optional recorded transcript override
+    thing: str | None = None        # optional clipboard override (text or path)
 
 
 @dataclass

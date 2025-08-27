@@ -24,8 +24,8 @@ class TranscribePipelineMode:
             Notify(text="Stop record"),
             TranscribeAudioStep(),
             SaveTranscript(output_dir=self.ctx.output_dir / 'transcribe'),
-            CopyToClipboard(),
-            NotifyTranscription(title="Transcription completed"),
+            CopyToClipboard(key="transcript"),
+            NotifyTranscription(title="Transcription completed", key="transcript"),
             Finalize(),
         ]
         return Pipeline(steps)
