@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
+from PIL import Image
 
-# import pyperclip
 from loguru import logger
 
 from wvcr.config import OUTPUT
@@ -53,7 +53,7 @@ def answer_question(transcript: str, config: OAIConfig) -> str:
         return transcript
 
 
-def explain(transcript: str, config: OAIConfig | GeminiConfig, thing: str) -> str:
+def explain(transcript: str, config: OAIConfig | GeminiConfig, thing) -> str:
     logger.info(f"Explaining with context: {transcript}")
     messages = Messages()
     messages.clear_history()
@@ -66,7 +66,7 @@ def explain(transcript: str, config: OAIConfig | GeminiConfig, thing: str) -> st
     if transcript:
         messages.add_message("user", transcript)
 
-    if thing:
+    if thing and isinstance(thing, str):
         p = Path(thing)
         if p.exists() and p.is_file():
             suffix = p.suffix.lower()
@@ -83,6 +83,9 @@ def explain(transcript: str, config: OAIConfig | GeminiConfig, thing: str) -> st
                 messages.add_message("user", thing)
         else:
             messages.add_message("user", thing)
+    elif isinstance(thing, Image.Image):
+        messages.add_image(thing)
+
 
     messages._print()
 
