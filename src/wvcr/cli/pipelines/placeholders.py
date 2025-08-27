@@ -5,8 +5,6 @@ def _placeholder(name: str):
     print(f"Pipeline '{name}' not implemented")
 
 
-def run_transcribe_url(cfg: DictConfig):  # noqa: D401
-    _placeholder("transcribe_url")
 
 
 def run_answer(cfg: DictConfig):

@@ -15,7 +15,7 @@ from wvcr.config import (
 
 @dataclass
 class ContextConfig:
-    provider: str = "openai"  # openai|gemini (selects STT config)
+    provider: str = "gemini"  # openai|gemini (selects STT config)
     language: str = "ru"
     clipboard: bool = True
     notify: bool = True
@@ -36,6 +36,7 @@ class TranscribeConfig:
 @dataclass
 class TranscribeUrlConfig:
     context: ContextConfig = field(default_factory=ContextConfig)
+    url: str | None = None  # optional URL override
 
 
 @dataclass
@@ -68,7 +69,7 @@ class RootConfig:
 def register():  # idempotent registration
     cs = ConfigStore.instance()
     cs.store(group="pipeline", name="transcribe", node=TranscribeConfig)
-    cs.store(group="pipeline", name="transcribe_url", node=TranscribeUrlConfig)
+    cs.store(group="pipeline", name="transcribe-url", node=TranscribeUrlConfig)
     cs.store(group="pipeline", name="answer", node=AnswerConfig)
     cs.store(group="pipeline", name="explain", node=ExplainConfig)
     cs.store(group="pipeline", name="voiceover", node=VoiceoverConfig)

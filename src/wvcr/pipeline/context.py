@@ -17,7 +17,7 @@ class RuntimeContext:
 
     def get_stt_config(self):
         # Decide which config to use (could use options['provider'])
-        provider = self.options.get("provider", "openai")
+        provider = self.options.get("provider", "gemini")
         if provider == "gemini" and self.gemini_config:
             return self.gemini_config
         return self.oai_config

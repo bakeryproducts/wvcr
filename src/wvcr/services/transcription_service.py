@@ -8,6 +8,7 @@ from wvcr.config import GeminiConfig, OAIConfig
 
 def transcribe_audio(audio_file: Path, config: OAIConfig | GeminiConfig | Any, language: str = "ru") -> str:
     provider = getattr(config, "provider", None)
+    logger.info(f"Transcribing with provider={provider}")
 
     try:
         if provider == 'openai':
@@ -67,8 +68,12 @@ def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "r
     else:
         prompt = (
             f"Transcribe the spoken audio exactly into {language} text. "
-            "Output only the verbatim transcript with no extra commentary."
+            "Output it as dialog formating: two persons"
+            "p1: ..."
+            "p2: ..."
+
         )
+        # "Output only the verbatim transcript with no extra commentary."
 
     response = client.models.generate_content(
         model=config.STT_MODEL,

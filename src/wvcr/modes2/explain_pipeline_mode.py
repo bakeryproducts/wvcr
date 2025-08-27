@@ -26,10 +26,8 @@ class ExplainPipelineMode:
         steps = [InitState("explain"), PrepareOutputPath(records_dir=self.ctx.output_dir / "records")]
 
         if instruction:
-            # Seed transcript directly
             steps.append(SetKeyFromArg(key="transcript", value=instruction))
         else:
-            # Normal recording + transcription path
             steps.extend([
                 ConfigureRecording(defaults={"format": "wav", "rate": 16000, "channels": 1}),
                 Notify(text="Start record"),
@@ -39,7 +37,6 @@ class ExplainPipelineMode:
                 SaveTranscript(output_dir=self.ctx.output_dir / 'transcribe'),
             ])
 
-        # Acquire thing (clipboard) only if not provided explicitly
         if thing:
             steps.append(SetKeyFromArg(key="thing", value=thing))
         else:

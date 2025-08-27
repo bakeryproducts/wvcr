@@ -12,8 +12,8 @@ from omegaconf import DictConfig
 from . import config as cfg_mod
 from wvcr.cli.pipelines.explain import run as run_explain
 from wvcr.cli.pipelines.transcribe import run as run_transcribe
+from wvcr.cli.pipelines.transcribe_url import run_transcribe_url
 from wvcr.cli.pipelines.placeholders import (
-    run_transcribe_url,
     run_answer,
     run_voiceover,
 )
@@ -23,7 +23,7 @@ cfg_mod.register()
 
 PIPELINE_HANDLERS: dict[str, Callable[[DictConfig], None]] = {
     "transcribe": run_transcribe,
-    "transcribe_url": run_transcribe_url,
+    "transcribe-url": run_transcribe_url,
     "answer": run_answer,
     "explain": run_explain,
     "voiceover": run_voiceover,
