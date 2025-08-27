@@ -5,7 +5,6 @@ import subprocess
 from pathlib import Path
 from loguru import logger
 
-from wvcr.notification_manager import NotificationManager
 from wvcr.common import create_key_monitor
 from wvcr.config import RecorderAudioConfig
 from wvcr.ipc.ipc_mic_handler import IPCMicHandler
@@ -17,9 +16,8 @@ class IPCVoiceRecorder:
     It spawns a separate mic capture process that streams VAD-filtered PCM frames
     via a Unix domain socket. Frames are accumulated locally until stopped.
     """
-    def __init__(self, notifier: NotificationManager | None = None, use_evdev: bool = False):
-        self.config = RecorderAudioConfig()
-        self.notifier = notifier or NotificationManager()
+    def __init__(self, config: RecorderAudioConfig, use_evdev: bool = False):
+        self.config = config
         self.use_evdev = use_evdev
         self._ipc = IPCMicHandler(rate=self.config.RATE, channels=self.config.CHANNELS, enable_vad=self.config.ENABLE_VAD)
         self._frames: list[bytes] = []
@@ -32,7 +30,6 @@ class IPCVoiceRecorder:
         self._recording = True
         start_time = time.time()
 
-        self.notifier.send_notification("Recording", "Recording started (IPC). Press ESC to stop.")
         logger.info("[IPC] Recording started")
 
         stop_key = self.config.STOP_KEY
@@ -58,7 +55,6 @@ class IPCVoiceRecorder:
             self._recording = False
 
         logger.info("[IPC] Recording stopped")
-        self.notifier.send_notification("Recording", "Recording finished (IPC)")
 
         if format.lower() == "mp3":
             self._save_mp3(output_file)

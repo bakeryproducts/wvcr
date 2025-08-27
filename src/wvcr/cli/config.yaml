@@ -1,0 +1,17 @@
+
+defaults:
+  # Order: user/default schema, then choose pipeline, finally _self_ to apply file values last.
+  - schema/root
+  - pipeline: transcribe
+  - _self_
+
+# The selected pipeline's structured config will populate under this key.
+# Additional overrides can be applied on the command line.
+
+hydra:
+  output_subdir: null        # Disable creation of .hydra (no hydra/ overrides log)
+  run:
+    dir: .                   # Avoid timestamped run directories; use current working dir
+  sweep:
+    dir: .                   
+    subdir: .                

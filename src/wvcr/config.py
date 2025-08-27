@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
+from typing import Any
 
 from loguru import logger
 
@@ -42,7 +43,7 @@ class OAIConfig:
     EXPLAIN_MODEL: str = "gpt-5"
     temperature: float = 0.0
     api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
-    _client: object = field(default=None, init=False, repr=False)
+    _client: Any = field(default=None, init=False, repr=False)
 
     def get_client(self):
         if self._client is None:
@@ -63,7 +64,7 @@ class GeminiConfig:
     EXPLAIN_MODEL: str = "gemini-2.5-flash"
     temperature: float = 0.0
     api_key: str = field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
-    _client: object = field(default=None, init=False, repr=False)
+    _client: Any = field(default=None, init=False, repr=False)
 
     def get_client(self):
         if self._client is None:
@@ -85,7 +86,7 @@ class RecorderAudioConfig:
     CHANNELS: int = 1
     # RATE: int = 44100
     RATE: int = 16000
-    STOP_KEY: Key = Key.esc
+    STOP_KEY: Any = Key.esc
     MAX_DURATION: int = 120  # seconds
     ENABLE_VAD: bool = True  
 
@@ -96,4 +97,4 @@ class PlayerAudioConfig:
     FORMAT: int = pyaudio.paInt16
     CHANNELS: int = 1
     RATE: int = 44100
-    STOP_KEY: Key = Key.esc
+    STOP_KEY: Any = Key.esc

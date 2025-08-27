@@ -1,24 +1,28 @@
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
 from wvcr.config import GeminiConfig, OAIConfig
 
 
-def transcribe_audio(audio_file: Path, config: OAIConfig | GeminiConfig, language: str = "ru") -> str:
+def transcribe_audio(audio_file: Path, config: OAIConfig | GeminiConfig | Any, language: str = "ru") -> str:
+    provider = getattr(config, "provider", None)
+
     try:
-        if isinstance(config, (OAIConfig)):
+        if provider == 'openai':
             return transcribe_oai(audio_file, config, language)
-        elif isinstance(config, (GeminiConfig)):
+        elif provider == 'gemini':
             return transcribe_gemini(audio_file, config, language)
         else:
-            raise TypeError(f"Unsupported config type: {type(config)}")
+            raise TypeError(f"Unsupported provider: {provider} (config type={type(config)})")
     except Exception as e:
         raise Exception(f"Transcription failed: {e}") from e
 
 
 def transcribe_oai(audio_file: Path, config: OAIConfig, language: str = "ru") -> str:
-    client = config.get_client()
+    from openai import OpenAI
+    client: OpenAI = config.get_client()
     with open(audio_file, 'rb') as audio:
         transcription = client.audio.transcriptions.create(
             model=config.STT_MODEL,

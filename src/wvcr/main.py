@@ -42,11 +42,11 @@ def get_processing_mode(args) -> ProcessingMode:
         return ProcessingMode.TRANSCRIBE
     
     mode_map = {
-        'transcribe': ProcessingMode.TRANSCRIBE,
         'transcribe_url': ProcessingMode.TRANSCRIBE_URL,
+        'voiceover': ProcessingMode.VOICEOVER,
+        'transcribe': ProcessingMode.TRANSCRIBE,
         'answer': ProcessingMode.ANSWER,
         'explain': ProcessingMode.EXPLAIN,
-        'voiceover': ProcessingMode.VOICEOVER
     }
     return mode_map[args.mode]
 
@@ -54,42 +54,32 @@ def main():
     args = parse_args()
     mode = get_processing_mode(args)
     notifier = NotificationManager()
-    config = OAIConfig()
-    # config = GeminiConfig()
+    oai_config = OAIConfig()
+    gemini_config = GeminiConfig()
+    mode_handler = ModeFactory.create_mode(mode, oai_config, notifier)
 
-    try:
-        mode_handler = ModeFactory.create_mode(mode, config, notifier)
         
-        if mode == ProcessingMode.VOICEOVER:
-            result_text, output_file = mode_handler.process(use_evdev=args.evdev)
-            if output_file:
-                logger.info(f"Voiceover saved to {output_file}")
-            return
-        
-        if mode == ProcessingMode.TRANSCRIBE_URL:
-            result_text, output_file = mode_handler.process()
-            if output_file:
-                logger.info(f"URL transcription saved to {output_file}")
-            return
+    if mode == ProcessingMode.VOICEOVER:
+        _, output_file = mode_handler.process(use_evdev=args.evdev)
+        return
+    
 
-        logger.debug("Starting voice recording")
-        # format = 'mp3'
-        format = 'wav'
-        audio_file = create_audio_file_path("records", extension=format)
+    if mode == ProcessingMode.TRANSCRIBE_URL:
+        _, output_file = mode_handler.process()
+        return
 
-        recorder = IPCVoiceRecorder(notifier, use_evdev=args.evdev)
-        recorder.record(audio_file, format=format)
-        logger.debug(f"Recording saved to {audio_file}")
 
-        result_text, output_file = mode_handler.process(audio_file)
-        logger.debug(f"Processing completed. Result saved to {output_file}")
+    format = 'wav'
+    audio_file = create_audio_file_path("records", extension=format)
 
-    except KeyboardInterrupt:
-        logger.info("Program terminated by user")
-        sys.exit(0)
-    except Exception as e:
-        logger.exception(f"An error occurred: {e}")
-        sys.exit(1)
+    recorder = IPCVoiceRecorder(notifier, use_evdev=args.evdev)
+    recorder.record(audio_file, format=format)
+    logger.debug(f"Recording saved to {audio_file}")
+
+
+    result_text, output_file = mode_handler.process(audio_file)
+    logger.debug(f"Processing completed. Result saved to {output_file}")
+
 
 if __name__ == "__main__":
     main()
