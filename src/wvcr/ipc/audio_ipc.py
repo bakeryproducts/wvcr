@@ -9,7 +9,6 @@ from collections import deque
 
 from loguru import logger
 
-from wvcr.services.vad import SileroVAD, NoVad
 
 
 class UnixAudioInput:
@@ -120,10 +119,10 @@ def _capture_worker(stop_evt,
                     warmup_ms: int,
                     enable_vad: bool):
     import pyaudio  # import inside process
+    from wvcr.services.vad import SileroVAD, NoVad
 
     if enable_vad: vad = SileroVAD(window_ms=1000, hangover_ms=1000)
     else: vad = NoVad()
-
 
     pa = pyaudio.PyAudio()
     fpb = int(rate * chunk_ms / 1000)

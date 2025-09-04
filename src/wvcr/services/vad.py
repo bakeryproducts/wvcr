@@ -6,11 +6,6 @@ from typing import Optional
 
 from loguru import logger
 
-try:
-    import webrtcvad  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    webrtcvad = None  # type: ignore
-
 
 @dataclass
 class VADConfig:
