@@ -1,13 +1,12 @@
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
+from dataclasses import dataclass
 
 from wvcr.config import OAIConfig, GeminiConfig
 from wvcr.notification_manager import NotificationManager
 
 @dataclass
 class RuntimeContext:
-    """Holds shared services/config for steps."""
     oai_config: OAIConfig
     gemini_config: GeminiConfig | None
     notifier: NotificationManager

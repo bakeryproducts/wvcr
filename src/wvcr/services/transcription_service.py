@@ -24,6 +24,9 @@ def transcribe_audio(audio_file: Path, config: OAIConfig | GeminiConfig | Any, l
 def transcribe_oai(audio_file: Path, config: OAIConfig, language: str = "ru") -> str:
     from openai import OpenAI
     client: OpenAI = config.get_client()
+
+    logger.debug('sending audio to OpenAI for transcription')
+
     with open(audio_file, 'rb') as audio:
         transcription = client.audio.transcriptions.create(
             model=config.STT_MODEL,
@@ -40,9 +43,9 @@ def transcribe_oai(audio_file: Path, config: OAIConfig, language: str = "ru") ->
 
 
 def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "ru") -> str:
-    from google.genai import types 
+    from google.genai import types, Client
 
-    client = config.get_client()
+    client: Client = config.get_client()
     # Determine MIME type from extension (Gemini needs correct mime_type)
     ext = audio_file.suffix.lower()
     mime_map = {
@@ -60,7 +63,8 @@ def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "r
         audio_bytes = f.read()
 
     # Prompt: keep concise to minimize model drift
-    if language.lower() == "auto":
+    # if language.lower() == "auto":
+    if True:
         prompt = (
             "Transcribe the spoken audio exactly. Output only the verbatim transcript "
             "in the original language with no extra commentary."
@@ -68,15 +72,20 @@ def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "r
     else:
         prompt = (
             f"Transcribe the spoken audio exactly into {language} text. "
-            "Output it as dialog formating: two persons"
-            "p1: ..."
-            "p2: ..."
-
+            "Output only the verbatim transcript with no extra commentary."
         )
-        # "Output only the verbatim transcript with no extra commentary."
+            # "Output it as dialog formating: two persons"
+            # "p1: ..."
+            # "p2: ..."
 
     response = client.models.generate_content(
         model=config.STT_MODEL,
+        config=types.GenerateContentConfig(
+            temperature=config.temperature,
+            thinking_config=types.ThinkingConfig(
+                thinking_level=types.ThinkingLevel.MINIMAL
+            )
+        ),
         contents=[
             prompt,
             types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),

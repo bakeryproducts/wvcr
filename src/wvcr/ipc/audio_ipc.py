@@ -222,8 +222,8 @@ def start_mic_capture_process(socket_path: str = "/tmp/adk_audio.sock",
     """
 
     try:
-        if mp.get_start_method(allow_none=True) != "spawn":
-            mp.set_start_method("spawn", force=True)
+        if mp.get_start_method(allow_none=True) != "fork":
+            mp.set_start_method("fork", force=True)
     except RuntimeError:
         # Already set in this interpreter; ignore
         pass

@@ -59,10 +59,10 @@ class OAIConfig:
 class GeminiConfig:
     """Configuration for Gemini provider (transcription placeholder)."""
     provider: str = "gemini"
-    STT_MODEL: str = "gemini-2.5-flash"
-    GPT_MODEL: str = "gemini-2.5-pro"
-    EXPLAIN_MODEL: str = "gemini-2.5-flash"
-    temperature: float = 0.0
+    STT_MODEL: str = "gemini-3-flash-preview"
+    GPT_MODEL: str = "gemini-3-flash-preview"
+    EXPLAIN_MODEL: str = "gemini-3-flash-preview"
+    temperature: float = 1.0
     api_key: str = field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
     _client: Any = field(default=None, init=False, repr=False)
 

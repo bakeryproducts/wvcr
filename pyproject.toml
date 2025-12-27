@@ -16,6 +16,7 @@ dependencies = [
     "openai>=1.75.0",
     "wave",
     "pyperclip",
+    "google-genai",
     "pynput",
     "python-dotenv",
     "plyer",
