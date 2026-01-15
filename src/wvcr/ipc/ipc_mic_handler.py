@@ -24,7 +24,7 @@ class IPCMicHandler:
                  socket_path: str = "/tmp/adk_audio.sock",
                  rcvbuf_bytes: int = 4_194_304,
                  max_frames: int = 256,
-                 enable_vad: bool = True,
+                 enable_vad: bool = False,
                  join_timeout: float = 0.2):
         self.rate = rate
         self.channels = channels

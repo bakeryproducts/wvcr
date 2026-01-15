@@ -121,8 +121,10 @@ def _capture_worker(stop_evt,
     import pyaudio  # import inside process
     from wvcr.services.vad import SileroVAD, NoVad
 
-    if enable_vad: vad = SileroVAD(window_ms=1000, hangover_ms=1000)
-    else: vad = NoVad()
+    if enable_vad:
+        vad = SileroVAD(window_ms=1000, hangover_ms=1000)
+    else:
+        vad = NoVad()
 
     pa = pyaudio.PyAudio()
     fpb = int(rate * chunk_ms / 1000)

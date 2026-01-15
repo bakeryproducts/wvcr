@@ -88,7 +88,7 @@ class RecorderAudioConfig:
     RATE: int = 16000
     STOP_KEY: Any = Key.esc
     MAX_DURATION: int = 120  # seconds
-    ENABLE_VAD: bool = True  
+    ENABLE_VAD: bool = False  
 
 @dataclass
 class PlayerAudioConfig:

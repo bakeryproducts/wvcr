@@ -7,6 +7,13 @@ defaults:
   - override hydra/hydra_logging: disabled
   - override hydra/job_logging: disabled
 
+# Allow environment overrides so hotkeyed launches can flip behavior without
+# touching the CLI invocation. Both apply to every pipeline.
+pipeline:
+  context:
+    provider: ${oc.env:WVCR_PROVIDER,gemini}
+    use_evdev: ${oc.env:WVCR_USE_EVDEV,true}
+
 # The selected pipeline's structured config will populate under this key.
 # Additional overrides can be applied on the command line.
 
