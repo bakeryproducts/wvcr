@@ -1,7 +1,7 @@
 from omegaconf import DictConfig, OmegaConf
 from wvcr.notification_manager import NotificationManager
 from wvcr.pipeline import RuntimeContext
-from wvcr.ipc_recorder import IPCVoiceRecorder
+from wvcr.ipc import IPCVoiceRecorder
 from wvcr.config import OUTPUT, OAIConfig, GeminiConfig
 
 
