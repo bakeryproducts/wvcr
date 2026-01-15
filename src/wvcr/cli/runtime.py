@@ -6,7 +6,7 @@ from wvcr.config import OUTPUT, OAIConfig, GeminiConfig
 
 
 def build_runtime_context(cfg: DictConfig) -> RuntimeContext:
-    from .config import ContextConfig  # local import to avoid cycles
+    from wvcr.config.hydra_schemas import ContextConfig
     ctx_cfg: ContextConfig = cfg.context  # type: ignore
     oai_cfg: OAIConfig = OmegaConf.to_object(ctx_cfg.oai)
     gemini_cfg: GeminiConfig = OmegaConf.to_object(ctx_cfg.gemini)

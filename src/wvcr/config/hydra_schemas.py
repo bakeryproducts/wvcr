@@ -1,20 +1,18 @@
+"""Hydra-structured configuration schemas for CLI pipelines."""
 from dataclasses import dataclass, field
 from typing import Any
 
 from omegaconf import MISSING
 from hydra.core.config_store import ConfigStore
 
-from wvcr.config import (
-    OUTPUT,
-    OAIConfig,
-    GeminiConfig,
-    RecorderAudioConfig,
-    PlayerAudioConfig,
-)
+from .env import OUTPUT
+from .providers import OAIConfig, GeminiConfig
+from .audio import RecorderAudioConfig, PlayerAudioConfig
 
 
 @dataclass
 class ContextConfig:
+    """Runtime context configuration shared across pipelines."""
     provider: str = "gemini"  # openai|gemini (selects STT config)
     language: str = "ru"
     clipboard: bool = True
@@ -66,7 +64,8 @@ class RootConfig:
     pipeline: Any = MISSING  # populated from defaults list in config.yaml
 
 
-def register():  # idempotent registration
+def register():
+    """Register all Hydra config schemas (idempotent)."""
     cs = ConfigStore.instance()
     cs.store(group="pipeline", name="transcribe", node=TranscribeConfig)
     cs.store(group="pipeline", name="transcribe-url", node=TranscribeUrlConfig)

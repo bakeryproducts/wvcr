@@ -11,7 +11,7 @@ from hydra import main
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 
-from . import config as cfg_mod
+from wvcr.config import hydra_schemas as cfg_mod
 from .runtime import build_runtime_context
 from wvcr.modes2.explain_pipeline_mode import ExplainPipelineMode
 from wvcr.modes2.transcribe_pipeline_mode import TranscribePipelineMode
