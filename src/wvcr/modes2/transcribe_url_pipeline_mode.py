@@ -1,13 +1,8 @@
 from wvcr.pipeline import RuntimeContext, WorkingState, Pipeline
-from wvcr.pipeline.steps.init_state import InitState
-from wvcr.pipeline.steps.prepare_output_path import PrepareOutputPath
+from wvcr.pipeline.steps.lifecycle_steps import InitState, PrepareOutputPath, SetKeyFromArg, Finalize
 from wvcr.pipeline.steps.transcribe_audio_step import TranscribeAudioStep
-from wvcr.pipeline.steps.save_transcript import SaveTranscript
-from wvcr.pipeline.steps.set_key_from_arg import SetKeyFromArg
-from wvcr.pipeline.steps.paste_from_clipboard import PasteFromClipboard
-from wvcr.pipeline.steps.copy_to_clipboard import CopyToClipboard
+from wvcr.pipeline.steps.io_steps import SaveTranscript, PasteFromClipboard, CopyToClipboard
 from wvcr.pipeline.steps.notify import Notify, NotifyTranscription
-from wvcr.pipeline.steps.finalize import Finalize
 from wvcr.pipeline.steps.download_audio_step import DownloadAudioStep
 
 class TranscribeUrlPipelineMode:

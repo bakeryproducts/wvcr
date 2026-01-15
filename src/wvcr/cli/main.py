@@ -9,15 +9,14 @@ from typing import Callable
 from loguru import logger
 from hydra import main
 from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
 
 from . import config as cfg_mod
-from wvcr.cli.pipelines.explain import run as run_explain
-from wvcr.cli.pipelines.transcribe import run as run_transcribe
-from wvcr.cli.pipelines.transcribe_url import run_transcribe_url
-from wvcr.cli.pipelines.placeholders import (
-    run_answer,
-    run_voiceover,
-)
+from .runtime import build_runtime_context
+from wvcr.modes2.explain_pipeline_mode import ExplainPipelineMode
+from wvcr.modes2.transcribe_pipeline_mode import TranscribePipelineMode
+from wvcr.modes2.transcribe_url_pipeline_mode import TranscribeUrlPipelineMode
+from wvcr.modes2.voiceover_pipeline_mode import VoiceoverPipelineMode
 from wvcr.config import OUTPUT
 
 logger.add(
@@ -29,12 +28,54 @@ logger.debug(f"[wvcr] CLI modules loaded in {time.monotonic() - start:.3f} secon
 # Register structured configs early (idempotent) so Hydra finds `config`.
 cfg_mod.register()
 
+
+def _run_pipeline(mode_class, cfg: DictConfig):
+    """Generic pipeline runner."""
+    ctx = build_runtime_context(cfg)
+    ctx.pipeline_cfg = cfg  # type: ignore[attr-defined]
+    mode = mode_class(ctx)
+    state = mode.run()
+    return state
+
+
+def _run_transcribe(cfg: DictConfig):
+    state = _run_pipeline(TranscribePipelineMode, cfg)
+    if transcript := state.get("transcript"):
+        logger.info(transcript)
+        print(transcript)
+
+
+def _run_transcribe_url(cfg: DictConfig):
+    state = _run_pipeline(TranscribeUrlPipelineMode, cfg)
+    if transcript := state.get("transcript"):
+        logger.info(transcript)
+        print(transcript)
+
+
+def _run_explain(cfg: DictConfig):
+    state = _run_pipeline(ExplainPipelineMode, cfg)
+    if explanation := state.get("explanation"):
+        logger.info(explanation)
+        print(explanation)
+
+
+def _run_answer(cfg: DictConfig):
+    print("Pipeline 'answer' not implemented")
+
+
+def _run_voiceover(cfg: DictConfig):
+    state = _run_pipeline(VoiceoverPipelineMode, cfg)
+    if voiceover_file := state.get("voiceover_file"):
+        logger.info(f"Voiceover saved to {voiceover_file}")
+        print(f"Voiceover saved to {voiceover_file}")
+
+
 PIPELINE_HANDLERS: dict[str, Callable] = {
-    "transcribe": run_transcribe,
-    "transcribe-url": run_transcribe_url,
-    "answer": run_answer,
-    "explain": run_explain,
-    "voiceover": run_voiceover,
+    "transcribe": _run_transcribe,
+    "transcribe-url": _run_transcribe_url,
+    "answer": _run_answer,
+    "explain": _run_explain,
+    "voiceover": _run_voiceover,
 }
 
 

@@ -1,14 +1,11 @@
 from pathlib import Path
 from wvcr.pipeline import RuntimeContext, WorkingState, Pipeline
-from wvcr.pipeline.steps.init_state import InitState
-from wvcr.pipeline.steps.prepare_output_path import PrepareOutputPath
+from wvcr.pipeline.steps.lifecycle_steps import InitState, PrepareOutputPath, Finalize
 from wvcr.pipeline.steps.configure_recording import ConfigureRecording
 from wvcr.pipeline.steps.record_audio import RecordAudio
 from wvcr.pipeline.steps.transcribe_audio_step import TranscribeAudioStep
-from wvcr.pipeline.steps.save_transcript import SaveTranscript
-from wvcr.pipeline.steps.copy_to_clipboard import CopyToClipboard
+from wvcr.pipeline.steps.io_steps import SaveTranscript, CopyToClipboard
 from wvcr.pipeline.steps.notify import Notify, NotifyTranscription
-from wvcr.pipeline.steps.finalize import Finalize
 
 class TranscribePipelineMode:
     def __init__(self, ctx: RuntimeContext):

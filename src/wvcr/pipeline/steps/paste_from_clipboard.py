@@ -24,7 +24,7 @@ class PasteFromClipboard(Step):
 
         # Fallback to image
         try:
-            from wvcr.services._clipboard import _paste_linux_wlpaste
+            from wvcr.services.clipboard import _paste_linux_wlpaste
             image = _paste_linux_wlpaste()
             if image:
                 state.set(self.key, image)
