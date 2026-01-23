@@ -78,18 +78,31 @@ class IPCVoiceRecorder:
         logger.info(f"[IPC] Audio saved to {output_file}")
 
     def _save_mp3(self, output_file: Path):
-        temp_wav = output_file.with_suffix('.tmp.wav')
-        self._save_wav(temp_wav)
-        cmd = ["ffmpeg", "-i", str(temp_wav), "-codec:a", "libmp3lame", "-b:a", "128k", "-y", str(output_file)]
+        if not self._frames:
+            logger.warning("[IPC] No audio frames captured; creating empty file")
+        
+        raw = b"".join(self._frames)
+        
+        # Pipe raw PCM directly to ffmpeg - no temp file needed
+        cmd = [
+            "ffmpeg",
+            "-f", "s16le",           # signed 16-bit little-endian PCM
+            "-ar", str(self.config.RATE),     # sample rate
+            "-ac", str(self.config.CHANNELS), # channels
+            "-i", "pipe:0",          # read from stdin
+            "-codec:a", "libmp3lame",
+            # "-b:a", "16k",           # 16 kbps to match Gemini downsampling
+            "-b:a", "128k",         # 128 kbps for better quality  
+            "-y",                    # overwrite output
+            str(output_file)
+        ]
+        
         try:
-            subprocess.run(cmd, check=True, capture_output=True)
+            result = subprocess.run(cmd, input=raw, check=True, capture_output=True)
             logger.info(f"[IPC] Audio saved as MP3 to {output_file}")
-            temp_wav.unlink(missing_ok=True)
         except subprocess.CalledProcessError as e:
-            logger.error(f"[IPC] Error converting to MP3: {e}")
-            temp_wav.rename(output_file.with_suffix('.wav'))
+            logger.error(f"[IPC] Error converting to MP3: {e.stderr.decode()}")
             raise
         except FileNotFoundError:
             logger.error("ffmpeg not found. Install ffmpeg to enable MP3 saving.")
-            # Keep wav
-            pass
+            raise

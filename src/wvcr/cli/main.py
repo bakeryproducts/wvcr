@@ -21,7 +21,7 @@ from wvcr.config import OUTPUT
 
 logger.add(
     OUTPUT / 'logs' / "{time:YYYY_MM}.log",
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+    format="{time:YYYY-MM-DD HH:mm:ss:SSS} | {level} | {message}",
 )
 logger.debug(f"[wvcr] CLI modules loaded in {time.monotonic() - start:.3f} seconds")
 

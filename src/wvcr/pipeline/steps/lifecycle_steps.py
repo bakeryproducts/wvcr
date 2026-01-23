@@ -25,13 +25,13 @@ class PrepareOutputPath(Step):
     requires = {"mode"}
     provides = {"audio_file"}
 
-    def __init__(self, records_dir, extension="wav"):
+    def __init__(self, records_dir):
         self.records_dir = records_dir
-        self.extension = extension
 
     def execute(self, state, ctx):
         self.records_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"{state.get('mode')}_{state.get('start_time').strftime('%Y-%m-%d_%H:%M:%S')}.{self.extension}"
+        extension = ctx.options.get("format", "mp3")
+        filename = f"{state.get('mode')}_{state.get('start_time').strftime('%Y-%m-%d_%H:%M:%S')}.{extension}"
         path = self.records_dir / filename
         state.set("audio_file", path)
 

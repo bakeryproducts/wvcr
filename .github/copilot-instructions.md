@@ -47,6 +47,7 @@ wvcr/
 - **Notifications** – `Notify`, `NotifyTranscription`
 ## Audio & IPC Stack
 - `IPCVoiceRecorder` (`src/wvcr/ipc/ipc_recorder.py`) captures microphone audio through `IPCMicHandler`, which spins up a Unix-domain socket server (`UnixAudioInput`) plus a forked `_capture_worker` (both in `src/wvcr/ipc/audio_ipc.py`). The worker streams VAD-filtered PCM frames (Silero-based by default in `src/wvcr/services/vad.py`).
+- Audio format (WAV/MP3) is controlled via `RecorderAudioConfig.AUDIO_FORMAT` (defaults to MP3 @ 16 kbps to match Gemini downsampling). MP3 encoding pipes raw PCM directly to ffmpeg stdin without temp files. Format flows from config → `ctx.options["format"]` → `PrepareOutputPath` (sets file extension) → `ConfigureRecording` → `RecordAudio`.
 - Keyboard stop monitoring lives in `src/wvcr/common.py` (pynput by default; optional evdev for Wayland). Playback utilities include `SpeechPlayer` (`src/wvcr/player.py`) and low-latency streaming components in `src/wvcr/standalone/audio_player.py`.
 - Voiceover flows (`src/wvcr/voiceover.py` + `src/wvcr/test_audio.py`) read clipboard text, request OpenAI TTS audio, and optionally play or store WAV output under `output/voiceover`.
 

@@ -49,7 +49,7 @@ def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "r
     # Determine MIME type from extension (Gemini needs correct mime_type)
     ext = audio_file.suffix.lower()
     mime_map = {
-        ".mp3": "audio/mpeg",
+        ".mp3": "audio/mp3",
         ".mpeg": "audio/mpeg",
         ".wav": "audio/wav",
         ".ogg": "audio/ogg",
@@ -78,12 +78,13 @@ def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "r
             # "p1: ..."
             # "p2: ..."
 
+    logger.debug('sending audio to Gemini for transcription')
     response = client.models.generate_content(
         model=config.STT_MODEL,
         config=types.GenerateContentConfig(
             temperature=config.temperature,
             thinking_config=types.ThinkingConfig(
-                thinking_level=types.ThinkingLevel.MINIMAL
+                thinking_level=types.ThinkingLevel.LOW,
             )
         ),
         contents=[
@@ -91,6 +92,7 @@ def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "r
             types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
         ],
     )
+    logger.debug(response)
 
     text = getattr(response, "text", None)
     logger.debug(f"Gemini transcription received {len(text)} chars")

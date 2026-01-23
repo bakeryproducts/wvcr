@@ -23,7 +23,7 @@ class ExplainPipelineMode:
             steps.append(SetKeyFromArg(key="transcript", value=instruction))
         else:
             steps.extend([
-                ConfigureRecording(defaults={"format": "wav", "rate": 16000, "channels": 1}),
+                ConfigureRecording(defaults={"rate": 16000, "channels": 1}),
                 Notify(text="Start record"),
                 RecordAudio(),
                 Notify(text="Stop record"),

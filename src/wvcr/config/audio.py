@@ -12,6 +12,7 @@ class RecorderAudioConfig:
     FORMAT: int = pyaudio.paInt16
     CHANNELS: int = 1
     RATE: int = 16000
+    AUDIO_FORMAT: str = "mp3"  # File format: mp3, wav
     STOP_KEY: Any = Key.esc
     MAX_DURATION: int = 120  # seconds
     ENABLE_VAD: bool = False

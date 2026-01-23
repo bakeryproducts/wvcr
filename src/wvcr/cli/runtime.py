@@ -18,6 +18,7 @@ def build_runtime_context(cfg: DictConfig) -> RuntimeContext:
         # audio overrides (flat for now)
         "rate": ctx_cfg.recorder.RATE,
         "channels": ctx_cfg.recorder.CHANNELS,
+        "format": ctx_cfg.recorder.AUDIO_FORMAT,
         "vad": ctx_cfg.recorder.ENABLE_VAD,
         "max_duration": ctx_cfg.recorder.MAX_DURATION,
     }
