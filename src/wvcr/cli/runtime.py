@@ -3,6 +3,7 @@ from wvcr.notification_manager import NotificationManager
 from wvcr.pipeline import RuntimeContext
 from wvcr.ipc import IPCVoiceRecorder
 from wvcr.config import OUTPUT, OAIConfig, GeminiConfig
+from wvcr.services.tts_service import TTSService
 
 
 def build_runtime_context(cfg: DictConfig) -> RuntimeContext:
@@ -30,6 +31,7 @@ def build_runtime_context(cfg: DictConfig) -> RuntimeContext:
         options=options,
         services={
             "recorder": IPCVoiceRecorder(config=ctx_cfg.recorder, use_evdev=ctx_cfg.use_evdev),
+            "tts": TTSService(oai_config=oai_cfg, gemini_config=gemini_cfg),
         },
     )
     return runtime

@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 from PIL import Image
+from io import BytesIO
+import base64
 
 from loguru import logger
 
@@ -67,21 +69,29 @@ def explain(transcript: str, config: OAIConfig | GeminiConfig, thing) -> str:
         messages.add_message("user", transcript)
 
     if thing and isinstance(thing, str):
-        p = Path(thing)
-        if p.exists() and p.is_file():
-            suffix = p.suffix.lower()
+        # Only treat as file path if it's reasonably short and doesn't contain newlines
+        # (actual file paths won't have newlines or be extremely long)
+        if len(thing) < 4096 and '\n' not in thing:
+            p = Path(thing)
             try:
-                if suffix in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
-                    data = p.read_bytes()
-                    messages.add_image(data)
+                if p.exists() and p.is_file():
+                    suffix = p.suffix.lower()
+                    if suffix in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+                        data = p.read_bytes()
+                        messages.add_image(data)
+                    else:
+                        text = p.read_text(encoding="utf-8", errors="ignore")
+                        if text.strip():
+                            messages.add_message("user", text.strip())
                 else:
-                    text = p.read_text(encoding="utf-8", errors="ignore")
-                    if text.strip():
-                        messages.add_message("user", text.strip())
+                    # Path string but file doesn't exist - use as literal text
+                    messages.add_message("user", thing)
             except Exception as e:
-                logger.warning(f"Failed to load thing file '{p}': {e}; using literal string")
+                # Path check failed or file read failed - use as literal text
+                logger.debug(f"Thing not a valid file path: {e}; using as literal string")
                 messages.add_message("user", thing)
         else:
+            # Too long or contains newlines - treat as literal text content
             messages.add_message("user", thing)
     elif isinstance(thing, Image.Image):
         messages.add_image(thing)
@@ -92,7 +102,7 @@ def explain(transcript: str, config: OAIConfig | GeminiConfig, thing) -> str:
     if isinstance(config, OAIConfig):
         return explain_oai(messages, config)
     elif isinstance(config, GeminiConfig):
-        raise NotImplementedError("GeminiConfig is not supported yet.")
+        return explain_gemini(messages, config)
     return ""
 
 
@@ -110,6 +120,58 @@ def explain_oai(messages, config: OAIConfig) -> str:
         return response.choices[0].message.content
     except Exception as e:
         logger.exception(f"Could not process explanation: {str(e)}")
+        return ""
+
+
+def explain_gemini(messages, config: GeminiConfig) -> str:
+    from google.genai import types
+
+    client = config.get_client()
+
+    try:
+        # Convert messages to Gemini format
+        parts = []
+        
+        for msg in messages.history:
+            if "content" in msg:
+                # Add text content with role prefix for context
+                role = msg["role"]
+                content = msg["content"]
+                if role == "system":
+                    parts.append(f"Instructions: {content}")
+                elif role == "user":
+                    parts.append(f"User: {content}")
+                elif role == "assistant":
+                    parts.append(f"Assistant: {content}")
+            elif "image" in msg:
+                # Convert PIL Image to bytes
+                img: Image.Image = msg["image"]
+                buf = BytesIO()
+                img.save(buf, format="PNG")
+                img_bytes = buf.getvalue()
+                parts.append(types.Part.from_bytes(data=img_bytes, mime_type="image/png"))
+        
+        logger.debug(f"Sending {len(parts)} parts to Gemini for explanation")
+        
+        response = client.models.generate_content(
+            model=config.EXPLAIN_MODEL,
+            config=types.GenerateContentConfig(
+                temperature=config.temperature,
+                thinking_config=types.ThinkingConfig(
+                    thinking_level=types.ThinkingLevel.LOW,
+                )
+            ),
+            contents=parts,
+        )
+        
+        logger.debug(f"Gemini explanation response: {response}")
+        text = getattr(response, "text", None)
+        if text:
+            logger.debug(f"Gemini explanation received {len(text)} chars")
+            return text.strip()
+        return ""
+    except Exception as e:
+        logger.exception(f"Could not process explanation with Gemini: {str(e)}")
         return ""
 
 
