@@ -1,4 +1,5 @@
 """Hydra-structured configuration schemas for CLI pipelines."""
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -13,6 +14,7 @@ from .audio import RecorderAudioConfig, PlayerAudioConfig
 @dataclass
 class ContextConfig:
     """Runtime context configuration shared across pipelines."""
+
     provider: str = "gemini"  # openai|gemini (selects STT config)
     language: str = "ru"
     clipboard: bool = True
@@ -46,12 +48,18 @@ class AnswerConfig:
 class ExplainConfig:
     context: ContextConfig = field(default_factory=ContextConfig)
     instruction: str | None = None  # optional recorded transcript override
-    thing: str | None = None        # optional clipboard override (text or path)
+    thing: str | None = None  # optional clipboard override (text or path)
 
 
 @dataclass
 class VoiceoverConfig:
     context: ContextConfig = field(default_factory=ContextConfig)
+
+
+@dataclass
+class ResearchConfig:
+    context: ContextConfig = field(default_factory=ContextConfig)
+    instruction: str | None = None  # optional text input (skip recording)
 
 
 @dataclass
@@ -61,6 +69,7 @@ class RootConfig:
     Defaults now live in `config.yaml` to avoid Hydra's deprecated automatic
     schema matching (config file name == schema name) + defaults list combo.
     """
+
     pipeline: Any = MISSING  # populated from defaults list in config.yaml
 
 
@@ -72,6 +81,7 @@ def register():
     cs.store(group="pipeline", name="answer", node=AnswerConfig)
     cs.store(group="pipeline", name="explain", node=ExplainConfig)
     cs.store(group="pipeline", name="voiceover", node=VoiceoverConfig)
+    cs.store(group="pipeline", name="research", node=ResearchConfig)
     # Register root schema under a distinct group to opt-out of deprecated
     # automatic schema matching (schema name == config file name).
     cs.store(group="schema", name="root", node=RootConfig)

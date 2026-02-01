@@ -1,13 +1,12 @@
-"""I/O steps: clipboard operations, file saving."""
-
 from pathlib import Path
+
 import pyperclip
 from loguru import logger
+
 from ..step import Step
 
 
 class PasteFromClipboard(Step):
-    """Paste text or image from clipboard."""
     name = "paste"
 
     def __init__(self, key: str):
@@ -29,6 +28,7 @@ class PasteFromClipboard(Step):
         # Fallback to image
         try:
             from wvcr.services.clipboard import _paste_linux_wlpaste
+
             image = _paste_linux_wlpaste()
             if image:
                 state.set(self.key, image)
@@ -39,7 +39,6 @@ class PasteFromClipboard(Step):
 
 
 class CopyToClipboard(Step):
-    """Copy text to clipboard."""
     name = "clipboard"
 
     def __init__(self, key: str = "transcript"):
@@ -56,7 +55,6 @@ class CopyToClipboard(Step):
 
 
 class SaveTranscript(Step):
-    """Save transcript to timestamped file."""
     name = "save_transcript"
     requires = {"transcript", "start_time", "mode"}
     provides = {"transcript_file"}
@@ -73,7 +71,6 @@ class SaveTranscript(Step):
 
 
 class SaveExplanation(Step):
-    """Save explanation to timestamped file."""
     name = "save_explanation"
     requires = {"explanation", "start_time", "mode"}
     provides = {"explanation_file"}
@@ -87,3 +84,19 @@ class SaveExplanation(Step):
         out = self.output_dir / filename
         out.write_text(state.get("explanation"), encoding="utf-8")
         state.set("explanation_file", out)
+
+
+class SaveResearchResult(Step):
+    name = "save_research_result"
+    requires = {"research_result", "start_time", "mode"}
+    provides = {"research_result_file"}
+
+    def __init__(self, output_dir: Path):
+        self.output_dir = output_dir
+
+    def execute(self, state, ctx):
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"{state.get('mode')}_{state.get('start_time').strftime('%Y-%m-%d_%H:%M:%S')}.txt"
+        out = self.output_dir / filename
+        out.write_text(state.get("research_result"), encoding="utf-8")
+        state.set("research_result_file", out)

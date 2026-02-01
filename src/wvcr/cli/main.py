@@ -1,6 +1,8 @@
 import time
+
 start = time.monotonic()
 import logging
+
 # for some reason httpx logs into stdout
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -17,10 +19,11 @@ from wvcr.modes2.explain_pipeline_mode import ExplainPipelineMode
 from wvcr.modes2.transcribe_pipeline_mode import TranscribePipelineMode
 from wvcr.modes2.transcribe_url_pipeline_mode import TranscribeUrlPipelineMode
 from wvcr.modes2.voiceover_pipeline_mode import VoiceoverPipelineMode
+from wvcr.modes2.research_pipeline_mode import ResearchPipelineMode
 from wvcr.config import OUTPUT
 
 logger.add(
-    OUTPUT / 'logs' / "{time:YYYY_MM}.log",
+    OUTPUT / "logs" / "{time:YYYY_MM}.log",
     format="{time:YYYY-MM-DD HH:mm:ss:SSS} | {level} | {message}",
 )
 logger.debug(f"[wvcr] CLI modules loaded in {time.monotonic() - start:.3f} seconds")
@@ -70,12 +73,20 @@ def _run_voiceover(cfg: DictConfig):
         print(f"Voiceover saved to {voiceover_file}")
 
 
+def _run_research(cfg: DictConfig):
+    state = _run_pipeline(ResearchPipelineMode, cfg)
+    if result := state.get("research_result"):
+        logger.info(result)
+        print(result)
+
+
 PIPELINE_HANDLERS: dict[str, Callable] = {
     "transcribe": _run_transcribe,
     "transcribe-url": _run_transcribe_url,
     "answer": _run_answer,
     "explain": _run_explain,
     "voiceover": _run_voiceover,
+    "research": _run_research,
 }
 
 
