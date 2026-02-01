@@ -1,37 +1,40 @@
-from omegaconf import DictConfig, OmegaConf
 from wvcr.notification_manager import NotificationManager
 from wvcr.pipeline import RuntimeContext
 from wvcr.ipc import IPCVoiceRecorder
-from wvcr.config import OUTPUT, OAIConfig, GeminiConfig
+from wvcr.config import OUTPUT
+from wvcr.config.simple_config import WVCRConfig, get_default_config
 from wvcr.services.tts_service import TTSService
 
 
-def build_runtime_context(cfg: DictConfig) -> RuntimeContext:
-    from wvcr.config.hydra_schemas import ContextConfig
-    ctx_cfg: ContextConfig = cfg.context  # type: ignore
-    oai_cfg: OAIConfig = OmegaConf.to_object(ctx_cfg.oai)
-    gemini_cfg: GeminiConfig = OmegaConf.to_object(ctx_cfg.gemini)
+def build_runtime_context(cfg: WVCRConfig | None = None) -> RuntimeContext:
+    if cfg is None:
+        cfg = get_default_config()
+    
     options = {
-        "language": ctx_cfg.language,
-        "clipboard": ctx_cfg.clipboard,
-        "notify": ctx_cfg.notify,
-        "provider": ctx_cfg.provider,
+        "language": cfg.language,
+        "clipboard": cfg.clipboard,
+        "notify": cfg.notify,
+        "provider": cfg.provider,
         # audio overrides (flat for now)
-        "rate": ctx_cfg.recorder.RATE,
-        "channels": ctx_cfg.recorder.CHANNELS,
-        "format": ctx_cfg.recorder.AUDIO_FORMAT,
-        "vad": ctx_cfg.recorder.ENABLE_VAD,
-        "max_duration": ctx_cfg.recorder.MAX_DURATION,
+        "rate": cfg.recorder.RATE,
+        "channels": cfg.recorder.CHANNELS,
+        "format": cfg.recorder.AUDIO_FORMAT,
+        "vad": cfg.recorder.ENABLE_VAD,
+        "max_duration": cfg.recorder.MAX_DURATION,
+        # command-specific args
+        "url": cfg.url,
+        "instruction": cfg.instruction,
+        "thing": cfg.thing,
     }
     runtime = RuntimeContext(
-        oai_config=oai_cfg,
-        gemini_config=gemini_cfg,
+        oai_config=cfg.oai,
+        gemini_config=cfg.gemini,
         notifier=NotificationManager(),
-        output_dir=OUTPUT,  # TODO: consider honoring cfg.context.output_dir
+        output_dir=OUTPUT,
         options=options,
         services={
-            "recorder": IPCVoiceRecorder(config=ctx_cfg.recorder, use_evdev=ctx_cfg.use_evdev),
-            "tts": TTSService(oai_config=oai_cfg, gemini_config=gemini_cfg),
+            "recorder": IPCVoiceRecorder(config=cfg.recorder, use_evdev=cfg.use_evdev),
+            "tts": TTSService(oai_config=cfg.oai, gemini_config=cfg.gemini),
         },
     )
     return runtime

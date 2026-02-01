@@ -1,4 +1,3 @@
-"""API provider configurations with lazy client initialization."""
 import os
 from dataclasses import dataclass, field
 from typing import Any
@@ -6,7 +5,6 @@ from typing import Any
 
 @dataclass
 class OAIConfig:
-    """Configuration for OpenAI provider (lazy client creation)."""
     provider: str = "openai"
     STT_MODEL: str = "whisper-1"
     GPT_MODEL: str = "gpt-4.1-2025-04-14"
@@ -29,7 +27,6 @@ class OAIConfig:
 
 @dataclass
 class GeminiConfig:
-    """Configuration for Gemini provider."""
     provider: str = "gemini"
     STT_MODEL: str = "gemini-3-flash-preview"
     GPT_MODEL: str = "gemini-3-flash-preview"

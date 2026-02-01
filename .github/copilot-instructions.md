@@ -1,34 +1,34 @@
 # WVCR Architecture Overview
 
-## Project Purpose
-WVCR is a Linux-first voice recording and transcription toolkit that automates:
+WVCR is a Linux-first voice recording toolkit that can run agents:
 - Capturing microphone audio with VAD-driven stop/start behavior.
-- Invoking OpenAI or Gemini speech/language models for transcription, QA, or explanation tasks.
-- Distributing results through clipboard copies, desktop notifications, and persisted artifacts under `output/<mode>/`.
+- Invoking LLM providers / ADK agents for various tasks
+
+**Daemon Architecture**: See [docs/DAEMON.md](docs/DAEMON.md) for the client-daemon model, unified command registry, and auto-start behavior.
 
 ## Repository Layout
+
 ```
 wvcr/
 ├── README.md
 ├── docs/
-│   └── components.md   ← this document
+│   └── DAEMON.md
 ├── src/
 │   └── wvcr/
-│       ├── cli/        # Hydra entrypoints & configs
-│       ├── ipc/        # Unix-socket audio transport
-│       ├── modes2/     # Pipeline mode definitions
-│       ├── pipeline/   # Generic pipeline engine & steps
-│       ├── services/   # Transcription, download, clipboard helpers
-│       ├── standalone/ # Google ADK streaming client
-│       ├── voiceover.py
-│       └── ...
-├── tests/               # Legacy pytest suites (require updates)
-└── output/              # Timestamped transcripts, explanations, audio
+│       ├── commands.py    # Unified command registry
+│       ├── cli/           # Client, config, entrypoints
+│       ├── daemon/        # Server, control, lifecycle
+│       ├── ipc/           # Unix-socket audio transport
+│       ├── modes2/        # Pipeline mode definitions
+│       ├── pipeline/      # Generic pipeline engine & steps
+│       ├── services/      # Transcription, download, clipboard
+│       ├── adk/           # Google ADK research agents
+│       └── voiceover.py
+└── output/                # Timestamped transcripts, research, voiceover
 ```
 
-## Entry Points & Modes
-- **Hydra CLI (`src/wvcr/cli/main.py`)** – Registers typed configs from `src/wvcr/cli/config.py`, loads defaults from `cli/config.yaml`, and directly instantiates pipeline mode classes from `src/wvcr/modes2` based on `pipeline=<mode>`.
-- **Implemented pipelines** – `transcribe`, `transcribe-url`, `explain`, `voiceover`, and `research` (see `src/wvcr/modes2`). `answer` pipeline is a placeholder pending implementation.
+## Pipelines
+- **Implemented pipelines** – `transcribe`, `transcribe-url`, `explain`, `voiceover`, and `research` (see `src/wvcr/modes2`)
 
 ## Runtime Context & Pipeline Engine
 - `build_runtime_context` (`src/wvcr/cli/runtime.py`) hydrates a `RuntimeContext` (`src/wvcr/pipeline/context.py`) with OpenAI/Gemini configs, recorder/player options, notifier, and service singletons (notably `IPCVoiceRecorder`).

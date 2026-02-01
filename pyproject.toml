@@ -22,16 +22,18 @@ dependencies = [
     "requests",
     "yt-dlp",
   "ffmpeg-python",
-  "hydra-core>=1.3.2",
-  "google-adk @ file:///home/gsm/Documents/adk-python"
+  "fire",
+  "google-adk"
 ]
 
 [project.optional-dependencies]
 wayland = ["evdev"]
 
 [project.scripts]
-# Hydra @hydra.main based CLI (modularized)
-wvcr = "wvcr.cli.main:cli"
+# Daemon-based architecture
+wvcr-daemon = "wvcr.daemon.server:main"
+wvcr-ctl = "wvcr.daemon.control:main"
+wvcr = "wvcr.cli.client:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

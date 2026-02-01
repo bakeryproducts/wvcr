@@ -6,43 +6,55 @@ from loguru import logger
 from wvcr.config import GeminiConfig, OAIConfig
 
 
+TRANSCRIBE_PROMPT = (
+    "Convert this audio into clean, structured text. "
+    "Capture the core message accurately but remove filler words, false starts, and verbal noise. "
+    "Reorganize sentences for clarity if needed while preserving the original meaning and intent. "
+    "Output ONLY the processed transcript - no meta-commentary, no greetings, no sign-offs, no explanations. "
+    "Start immediately with the content."
+)
+
 def transcribe_audio(audio_file: Path, config: OAIConfig | GeminiConfig | Any, language: str = "ru") -> str:
     provider = getattr(config, "provider", None)
     logger.info(f"Transcribing with provider={provider}")
 
     try:
-        if provider == 'openai':
+        if provider == "openai":
             return transcribe_oai(audio_file, config, language)
-        elif provider == 'gemini':
+        elif provider == "gemini":
             return transcribe_gemini(audio_file, config, language)
         else:
-            raise TypeError(f"Unsupported provider: {provider} (config type={type(config)})")
+            raise TypeError( f"Unsupported provider: {provider} (config type={type(config)})")
     except Exception as e:
         raise Exception(f"Transcription failed: {e}") from e
 
 
 def transcribe_oai(audio_file: Path, config: OAIConfig, language: str = "ru") -> str:
     from openai import OpenAI
+
     client: OpenAI = config.get_client()
 
-    logger.debug('sending audio to OpenAI for transcription')
+    logger.debug("sending audio to OpenAI for transcription")
 
-    with open(audio_file, 'rb') as audio:
+    with open(audio_file, "rb") as audio:
         transcription = client.audio.transcriptions.create(
             model=config.STT_MODEL,
             file=audio,
             language=language,
-            chunking_strategy=None
+            prompt=TRANSCRIBE_PROMPT,
+            chunking_strategy=None,
         )
     # logger.debug(transcription)
     # usage may not always exist depending on SDK version
-    usage = getattr(transcription, 'usage', None)
+    usage = getattr(transcription, "usage", None)
     if usage:
         logger.info(f"Transcription usage {usage}")
     return transcription.text
 
 
-def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "ru") -> str:
+def transcribe_gemini(
+    audio_file: Path, config: GeminiConfig, language: str = "ru"
+) -> str:
     from google.genai import types, Client
 
     client: Client = config.get_client()
@@ -62,33 +74,18 @@ def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "r
     with open(audio_file, "rb") as f:
         audio_bytes = f.read()
 
-    # Prompt: keep concise to minimize model drift
-    # if language.lower() == "auto":
-    if True:
-        prompt = (
-            "Transcribe the spoken audio exactly. Output only the verbatim transcript "
-            "in the original language with no extra commentary."
-        )
-    else:
-        prompt = (
-            f"Transcribe the spoken audio exactly into {language} text. "
-            "Output only the verbatim transcript with no extra commentary."
-        )
-            # "Output it as dialog formating: two persons"
-            # "p1: ..."
-            # "p2: ..."
 
-    logger.debug('sending audio to Gemini for transcription')
+    logger.debug("sending audio to Gemini for transcription")
     response = client.models.generate_content(
         model=config.STT_MODEL,
         config=types.GenerateContentConfig(
             temperature=config.temperature,
             thinking_config=types.ThinkingConfig(
                 thinking_level=types.ThinkingLevel.LOW,
-            )
+            ),
         ),
         contents=[
-            prompt,
+            TRANSCRIBE_PROMPT,
             types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
         ],
     )
@@ -97,4 +94,3 @@ def transcribe_gemini(audio_file: Path, config: GeminiConfig, language: str = "r
     text = getattr(response, "text", None)
     logger.debug(f"Gemini transcription received {len(text)} chars")
     return text.strip()
-
