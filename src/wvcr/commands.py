@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 class Command(str, Enum):
     """Available WVCR commands."""
+
     TRANSCRIBE = "transcribe"
     TRANSCRIBE_URL = "transcribe-url"
     EXPLAIN = "explain"
@@ -18,6 +19,7 @@ class Command(str, Enum):
 @dataclass
 class CommandSpec:
     """Specification for a command."""
+
     name: Command
     description: str
     args: list[str]  # Required/optional argument names
@@ -30,43 +32,43 @@ COMMAND_REGISTRY: Dict[Command, CommandSpec] = {
         name=Command.TRANSCRIBE,
         description="Record and transcribe audio",
         args=["language", "provider"],
-        pipeline_mode="TranscribePipelineMode"
+        pipeline_mode="TranscribePipelineMode",
     ),
     Command.TRANSCRIBE_URL: CommandSpec(
         name=Command.TRANSCRIBE_URL,
         description="Transcribe audio from URL (YouTube, etc)",
         args=["url", "language", "provider"],
-        pipeline_mode="TranscribeUrlPipelineMode"
+        pipeline_mode="TranscribeUrlPipelineMode",
     ),
     Command.EXPLAIN: CommandSpec(
         name=Command.EXPLAIN,
         description="Record a question and explain something",
         args=["instruction", "thing", "language", "provider"],
-        pipeline_mode="ExplainPipelineMode"
+        pipeline_mode="ExplainPipelineMode",
     ),
     Command.VOICEOVER: CommandSpec(
         name=Command.VOICEOVER,
         description="Generate voiceover from clipboard text",
         args=["language", "provider"],
-        pipeline_mode="VoiceoverPipelineMode"
+        pipeline_mode="VoiceoverPipelineMode",
     ),
     Command.RESEARCH: CommandSpec(
         name=Command.RESEARCH,
         description="Run research pipeline using ADK agents",
         args=["instruction", "language", "provider"],
-        pipeline_mode="ResearchPipelineMode"
+        pipeline_mode="ResearchPipelineMode",
     ),
     Command.PING: CommandSpec(
         name=Command.PING,
         description="Ping daemon to check if alive",
         args=[],
-        pipeline_mode=None
+        pipeline_mode=None,
     ),
     Command.SHUTDOWN: CommandSpec(
         name=Command.SHUTDOWN,
         description="Shutdown daemon",
         args=[],
-        pipeline_mode=None
+        pipeline_mode=None,
     ),
 }
 
@@ -79,6 +81,7 @@ def get_user_commands() -> list[Command]:
         Command.EXPLAIN,
         Command.VOICEOVER,
         Command.RESEARCH,
+        Command.PING,
     ]
 
 

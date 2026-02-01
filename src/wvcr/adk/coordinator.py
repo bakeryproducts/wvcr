@@ -6,6 +6,8 @@ from google.genai import types
 from .models import GEMINI_3_FLASH
 from .search_agent import search_agent
 from .code_agent import code_agent
+from .memory_agent import memory_agent
+from .tools import memory_toolset
 
 
 coordinator_planner = BuiltInPlanner(
@@ -24,12 +26,18 @@ coordinator = LlmAgent(
     instruction="""You are a coordinator. Analyze queries and delegate to specialists.
 
 Tools:
-- search_agent: web search, news, facts
-- code_agent: calculations, data analysis, code
+- search_agent: subagent for web search, news, facts
+- code_agent: subagent for calculations, data analysis, code
+- memory_toolset: read/write/search personal notes knowledge base vault
 
 Delegate to the right specialist. Can use multiple.
 Synthesize results into a clear response.
 Always respond in Russian, be concise
 """,
-    tools=[AgentTool(agent=search_agent), AgentTool(agent=code_agent)],
+    tools=[
+        AgentTool(agent=search_agent),
+        AgentTool(agent=code_agent),
+        # AgentTool(agent=memory_agent),
+        memory_toolset,
+    ],
 )

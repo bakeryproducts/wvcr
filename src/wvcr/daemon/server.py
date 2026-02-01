@@ -1,8 +1,12 @@
 import os
 import socket
 import json
-import logging
+import time
 from typing import Any
+
+from loguru import logger
+
+from wvcr.config import OUTPUT
 
 # Heavy imports - loaded once at daemon startup
 from wvcr.cli.runtime import build_runtime_context
@@ -13,11 +17,22 @@ from wvcr.modes2.explain_pipeline_mode import ExplainPipelineMode
 from wvcr.modes2.voiceover_pipeline_mode import VoiceoverPipelineMode
 from wvcr.modes2.research_pipeline_mode import ResearchPipelineMode
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
+_LOGURU_CONFIGURED = False
+
+
+def _configure_logging() -> None:
+    global _LOGURU_CONFIGURED
+    if _LOGURU_CONFIGURED:
+        return
+
+    logs_dir = OUTPUT / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.add(
+        OUTPUT / "logs" / "{time:YYYY_MM}.log",
+        format="{time:YYYY-MM-DD HH:mm:ss:SSS} | {level} | {message}",
+    )
+    _LOGURU_CONFIGURED = True
 
 SOCKET_PATH = "/tmp/wvcr.sock"
 PID_FILE = "/tmp/wvcr.pid"
@@ -34,12 +49,16 @@ MODE_CLASSES = {
 
 class WVCRDaemon:
     def __init__(self):
+        _configure_logging()
+
         self.socket_path = SOCKET_PATH
         self.sock = None
         self.running = False
         logger.info("Initializing WVCR daemon with heavy imports...")
+        start = time.monotonic()
         # Pre-load runtime context (this is the slow part) - no config needed for daemon init
         self.runtime_ctx = build_runtime_context()  # Uses default config
+        logger.debug(f"[wvcr] CLI modules loaded in {time.monotonic() - start:.3f} seconds")
         logger.info("Heavy imports loaded, daemon ready")
 
     def start(self):
@@ -101,7 +120,7 @@ class WVCRDaemon:
             conn.sendall(json.dumps(response).encode("utf-8"))
 
         except Exception as e:
-            logger.error(f"Error handling client: {e}", exc_info=True)
+            logger.exception(f"Error handling client: {e}")
             error_response = {"status": "error", "error": str(e)}
             try:
                 conn.sendall(json.dumps(error_response).encode("utf-8"))
