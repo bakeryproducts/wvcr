@@ -5,10 +5,11 @@ from loguru import logger
 
 from wvcr.common import create_key_monitor
 from wvcr.config import PlayerAudioConfig
+from wvcr.notification_manager import NotificationBackend
 
 
 class SpeechPlayer:
-    def __init__(self, notifier):
+    def __init__(self, notifier: NotificationBackend):
         self.config = PlayerAudioConfig()
         self.playing = False
         self.notifier = notifier

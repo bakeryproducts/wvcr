@@ -1,4 +1,7 @@
-from wvcr.notification_manager import NotificationManager
+from wvcr.notification_manager import (
+    HyprlandNotificationManager,
+    SystemNotificationManager,
+)
 from wvcr.pipeline import RuntimeContext
 from wvcr.ipc import IPCVoiceRecorder
 from wvcr.config import OUTPUT
@@ -9,7 +12,14 @@ from wvcr.services.tts_service import TTSService
 def build_runtime_context(cfg: WVCRConfig | None = None) -> RuntimeContext:
     if cfg is None:
         cfg = get_default_config()
-    
+
+    # Select notification backend
+    notifier_class = (
+        HyprlandNotificationManager
+        if cfg.notify_backend == "hyprland"
+        else SystemNotificationManager
+    )
+
     options = {
         "language": cfg.language,
         "clipboard": cfg.clipboard,
@@ -29,7 +39,7 @@ def build_runtime_context(cfg: WVCRConfig | None = None) -> RuntimeContext:
     runtime = RuntimeContext(
         oai_config=cfg.oai,
         gemini_config=cfg.gemini,
-        notifier=NotificationManager(),
+        notifier=notifier_class(),
         output_dir=OUTPUT,
         options=options,
         services={

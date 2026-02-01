@@ -1,8 +1,23 @@
+import subprocess
+from typing import Protocol
+
 from loguru import logger
 from plyer import notification
 
 
-class NotificationManager:
+class NotificationBackend(Protocol):
+    @staticmethod
+    def send_notification(
+        title: str,
+        text: str,
+        timeout: int = 3,
+        color: str = "#2ecc71",
+        font_size: str = "32px",
+        cutoff: int | None = None,
+    ) -> None: ...
+
+
+class HyprlandNotificationManager:
     @staticmethod
     def send_notification(
         title: str,
@@ -12,16 +27,41 @@ class NotificationManager:
         font_size: str = "32px",
         cutoff: int | None = None,
     ):
-        """
-        Send a system notification with styled text.
+        if cutoff and len(text) > cutoff:
+            text = text[:cutoff] + "..."
 
-        Args:
-            title: Notification title
-            text: Message text
-            timeout: Notification display duration in seconds
-            color: HTML color code for the text
-            font_size: Font size with units (e.g. '32px', '12pt')
-        """
+        color_hex = color.lstrip("#")
+        timeout_ms = timeout * 1000
+        message = f"fontsize:{font_size.rstrip('px')} {title}: {text}"
+
+        try:
+            subprocess.run(
+                [
+                    "hyprctl",
+                    "notify",
+                    "-1",
+                    str(timeout_ms),
+                    f"rgb({color_hex})",
+                    message,
+                ],
+                check=True,
+                capture_output=True,
+            )
+        except Exception as e:
+            logger.exception(e)
+            logger.error(f"Failed to send Hyprland notification: {e}")
+
+
+class SystemNotificationManager:
+    @staticmethod
+    def send_notification(
+        title: str,
+        text: str,
+        timeout: int = 3,
+        color: str = "#2ecc71",
+        font_size: str = "32px",
+        cutoff: int | None = None,
+    ):
         if cutoff and len(text) > cutoff:
             text = text[:cutoff] + "..."
 
@@ -40,10 +80,8 @@ class NotificationManager:
             )
         except Exception as e:
             logger.exception(e)
-            logger.error(f"Failed to send notification: {e}")
+            logger.error(f"Failed to send system notification: {e}")
 
-    def test_notification(self):
-        """Test the notification system with a sample message."""
-        test_message = "This is a test notification message. If you see this, notifications are working correctly!"
-        self.send_notification("Test Notification", test_message, font_size="24px")
-        logger.info("Notification test completed")
+
+# Legacy alias
+NotificationManager = SystemNotificationManager

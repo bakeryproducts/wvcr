@@ -3,13 +3,14 @@ from typing import Any, Dict
 from dataclasses import dataclass
 
 from wvcr.config import OAIConfig, GeminiConfig
-from wvcr.notification_manager import NotificationManager
+from wvcr.notification_manager import NotificationBackend
+
 
 @dataclass
 class RuntimeContext:
     oai_config: OAIConfig
     gemini_config: GeminiConfig | None
-    notifier: NotificationManager
+    notifier: NotificationBackend
     output_dir: Path
     options: Dict[str, Any]  # CLI overrides (model, language, flags)
     services: Dict[str, Any]  # recorder, transcription, etc.
