@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import subprocess
 from pathlib import Path
 
@@ -6,6 +7,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
+from textual.design import ColorSystem
 from textual.widgets import (
     Footer,
     Input,
@@ -16,8 +18,21 @@ from textual.widgets import (
     Static,
 )
 
-import api
-from config import ADK_APP_NAME
+import wvcr.config  # ensure .env is loaded
+from wvcr.tui import api
+
+GRUVBOX = ColorSystem(
+    primary="#d79921",
+    secondary="#458588",
+    accent="#b8bb26",
+    warning="#d65d0e",
+    error="#cc241d",
+    success="#98971a",
+    background="#282828",
+    surface="#3c3836",
+    panel="#504945",
+    dark=True,
+)
 
 
 class AppListView(ListView):
@@ -40,43 +55,79 @@ class AgenticTUI(App):
     CSS = """
     Screen {
         layout: horizontal;
+        background: #282828;
     }
     
     #left-panel {
         width: 1fr;
         height: 100%;
-        padding: 0 1;
+        padding: 1;
     }
     
     #right-panel {
         width: 1fr;
         height: 100%;
-        padding: 0 1;
+        padding: 1;
     }
     
     .section-label {
-        color: $text-muted;
+        color: #a89984;
+        margin-bottom: 0;
+        padding: 0 1;
     }
     
     Input {
         height: 3;
+        background: #3c3836;
+        border: round #504945;
+        padding: 0 1;
+    }
+    
+    Input:focus {
+        border: round #d79921;
     }
     
     ListView {
         height: 1fr;
-        min-height: 4;
-        border: solid $primary;
+        min-height: 5;
+        background: #3c3836;
+        border: round #504945;
+        padding: 0;
+    }
+    
+    ListView:focus {
+        border: round #d79921;
+    }
+    
+    ListView > ListItem {
+        padding: 0 1;
+    }
+    
+    ListView > ListItem.--highlight {
+        background: #504945;
     }
     
     TextArea {
         height: 1fr;
-        min-height: 3;
+        min-height: 4;
+        background: #3c3836;
+        border: round #504945;
+    }
+    
+    TextArea:focus {
+        border: round #d79921;
     }
     
     #status {
         height: 1;
         dock: bottom;
-        background: $surface;
+        background: #3c3836;
+        color: #a89984;
+        padding: 0 1;
+    }
+    
+    Footer {
+        background: #3c3836;
     }
     """
 
@@ -90,7 +141,8 @@ class AgenticTUI(App):
         super().__init__()
         self.apps_data: list[str] = []
         self.sessions_data: list[dict] = []
-        self.selected_app: str = ADK_APP_NAME
+        self.selected_app: str = os.getenv("ADK_APP_NAME", "coordinator")
+        self.design = {"dark": GRUVBOX}
 
     def compose(self) -> ComposeResult:
         with Horizontal():
@@ -120,7 +172,6 @@ class AgenticTUI(App):
         await apps_list.clear()
         for i, app in enumerate(self.apps_data):
             apps_list.append(ListItem(Label(app), id=f"app-{i}"))
-        # Select default app
         if self.selected_app in self.apps_data:
             idx = self.apps_data.index(self.selected_app)
             apps_list.index = idx
@@ -175,7 +226,6 @@ class AgenticTUI(App):
             self.update_status("Error: Select an app first")
             return
 
-        # Validate files
         files_list = []
         if files_text:
             for line in files_text.splitlines():

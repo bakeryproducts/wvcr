@@ -23,7 +23,9 @@ dependencies = [
     "yt-dlp",
   "ffmpeg-python",
   "fire",
-  "google-adk"
+  "google-adk",
+  "textual>=0.50.0",
+  "httpx>=0.27.0"
 ]
 
 [project.optional-dependencies]
@@ -34,6 +36,7 @@ wayland = ["evdev"]
 wvcr-daemon = "wvcr.daemon.server:main"
 wvcr-ctl = "wvcr.daemon.control:main"
 wvcr = "wvcr.cli.client:main"
+wvcr-tui = "wvcr.tui.main:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

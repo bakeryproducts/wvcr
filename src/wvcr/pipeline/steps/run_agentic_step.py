@@ -1,5 +1,6 @@
 import os
 import base64
+from datetime import datetime
 
 import httpx
 from loguru import logger
@@ -9,9 +10,9 @@ from ..step import Step, StepError
 
 def get_adk_config() -> dict:
     return {
-        "url": os.getenv("ADK_API_URL", "http://localhost:4517"),
-        "app_name": os.getenv("ADK_APP_NAME", "weather_agent"),
-        "user_id": os.getenv("ADK_USER_ID", "default_user"),
+        "url": os.getenv("ADK_API_URL"),
+        "app_name": os.getenv("ADK_APP_NAME"),
+        "user_id": os.getenv("ADK_USER_ID"),
     }
 
 
@@ -21,7 +22,8 @@ class RunAgenticStep(Step):
 
     def execute(self, state, ctx):
         cfg = get_adk_config()
-        session_id = state.get("session_id") or "default_session"
+        default_session = str(datetime.now().strftime("%Y-%m-%d"))
+        session_id = state.get("session_id") or default_session
         app_name = state.get("app_name") or cfg["app_name"]
 
         try:
