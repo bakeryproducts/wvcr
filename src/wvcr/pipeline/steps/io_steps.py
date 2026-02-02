@@ -100,3 +100,19 @@ class SaveResearchResult(Step):
         out = self.output_dir / filename
         out.write_text(state.get("research_result"), encoding="utf-8")
         state.set("research_result_file", out)
+
+
+class SaveAgenticResult(Step):
+    name = "save_agentic_result"
+    requires = {"agentic_result", "start_time", "mode"}
+    provides = {"agentic_result_file"}
+
+    def __init__(self, output_dir: Path):
+        self.output_dir = output_dir
+
+    def execute(self, state, ctx):
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"{state.get('mode')}_{state.get('start_time').strftime('%Y-%m-%d_%H:%M:%S')}.txt"
+        out = self.output_dir / filename
+        out.write_text(state.get("agentic_result"), encoding="utf-8")
+        state.set("agentic_result_file", out)

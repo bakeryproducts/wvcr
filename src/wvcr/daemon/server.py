@@ -10,6 +10,7 @@ from wvcr.config import OUTPUT
 
 _LOGURU_CONFIGURED = False
 
+
 def _configure_logging() -> None:
     global _LOGURU_CONFIGURED
     if _LOGURU_CONFIGURED:
@@ -27,6 +28,7 @@ def _configure_logging() -> None:
     logger.info(f"Logging configured {OUTPUT}")
     _LOGURU_CONFIGURED = True
 
+
 # Configure logging BEFORE heavy imports so that any module-level loggers work
 _configure_logging()
 
@@ -38,6 +40,7 @@ from wvcr.modes2.transcribe_url_pipeline_mode import TranscribeUrlPipelineMode
 from wvcr.modes2.explain_pipeline_mode import ExplainPipelineMode
 from wvcr.modes2.voiceover_pipeline_mode import VoiceoverPipelineMode
 from wvcr.modes2.research_pipeline_mode import ResearchPipelineMode
+from wvcr.modes2.agentic_pipeline_mode import AgenticPipelineMode
 
 SOCKET_PATH = "/tmp/wvcr.sock"
 PID_FILE = "/tmp/wvcr.pid"
@@ -49,6 +52,7 @@ MODE_CLASSES = {
     "ExplainPipelineMode": ExplainPipelineMode,
     "VoiceoverPipelineMode": VoiceoverPipelineMode,
     "ResearchPipelineMode": ResearchPipelineMode,
+    "AgenticPipelineMode": AgenticPipelineMode,
 }
 
 
@@ -61,7 +65,9 @@ class WVCRDaemon:
         start = time.monotonic()
         # Pre-load runtime context (this is the slow part) - no config needed for daemon init
         self.runtime_ctx = build_runtime_context()  # Uses default config
-        logger.debug(f"[wvcr] CLI modules loaded in {time.monotonic() - start:.3f} seconds")
+        logger.debug(
+            f"[wvcr] CLI modules loaded in {time.monotonic() - start:.3f} seconds"
+        )
         logger.info("Heavy imports loaded, daemon ready")
 
     def start(self):
@@ -148,7 +154,7 @@ class WVCRDaemon:
         # Handle special daemon commands
         if cmd == Command.PING:
             return "pong"
-        
+
         if cmd == Command.SHUTDOWN:
             logger.info("Shutdown command received")
             self.running = False
@@ -175,8 +181,9 @@ class WVCRDaemon:
             Command.EXPLAIN: "explanation",
             Command.VOICEOVER: "voiceover_file",
             Command.RESEARCH: "research_result",
+            Command.AGENTIC: "agentic_result",
         }
-        
+
         result_key = result_key_map.get(cmd, "result")
         return state.get(result_key, "")
 

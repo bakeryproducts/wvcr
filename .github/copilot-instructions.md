@@ -28,7 +28,7 @@ wvcr/
 ```
 
 ## Pipelines
-- **Implemented pipelines** – `transcribe`, `transcribe-url`, `explain`, `voiceover`, and `research` (see `src/wvcr/modes2`)
+- **Implemented pipelines** – `transcribe`, `transcribe-url`, `explain`, `voiceover`, `research`, and `agentic` (see `src/wvcr/modes2`)
 
 ## Runtime Context & Pipeline Engine
 - `build_runtime_context` (`src/wvcr/cli/runtime.py`) hydrates a `RuntimeContext` (`src/wvcr/pipeline/context.py`) with OpenAI/Gemini configs, recorder/player options, notifier, and service singletons (notably `IPCVoiceRecorder`).
@@ -39,12 +39,13 @@ wvcr/
 - **TranscribeUrlPipelineMode** – Fetches a URL from config/clipboard, downloads audio via `DownloadAudioStep`, then reuses transcription, save, clipboard, and notification steps.
 - **ExplainPipelineMode** – Optionally injects a prerecorded instruction; otherwise records/transcribes like the transcribe pipeline, ingests extra “thing” context (clipboard text or Wayland image), calls `ExplainTextStep`, and saves/announces the explanation.
 - **VoiceoverPipelineMode** – Reads text from clipboard, generates speech via OpenAI TTS, and saves to `output/voiceover`.
-- **ResearchPipelineMode** – Accepts text instruction or audio input; routes to ADK agent (`src/wvcr/adk/runner.py`), which orchestrates agents for multi-step research
+- **ResearchPipelineMode** – Accepts text instruction or audio input; routes to local ADK agent (`src/wvcr/adk/runner.py`) with in-memory session.
+- **AgenticPipelineMode** – Records audio, optionally accepts `--instruction`, `--files`, `--app-name`, `--session-id`; calls external ADK API Server (`RunAgenticStep`), auto-creates session if needed, saves to `output/agentic`.
 
 ## Step Inventory (`src/wvcr/pipeline/steps`)
 - **Bootstrapping** – `InitState`, `PrepareOutputPath`, and `SetKeyFromArg` seed state; `PasteFromClipboard` supports text or Wayland images.
 - **Lifecycle** (`lifecycle_steps.py`) – `InitState`, `PrepareOutputPath`, `SetKeyFromArg`, `Finalize` handle pipeline initialization and cleanup.
-- **I/O** (`io_steps.py`) – `PasteFromClipboard` (text/Wayland images), `CopyToClipboard`, `SaveTranscript`, `SaveExplanation`, `SaveResearchResult`.
+- **I/O** (`io_steps.py`) – `PasteFromClipboard` (text/Wayland images), `CopyToClipboard`, `SaveTranscript`, `SaveExplanation`, `SaveResearchResult`, `SaveAgenticResult`.
 - **Recording** – `ConfigureRecording` merges defaults/CLI overrides, `RecordAudio` calls the IPC recorder, `DownloadAudioStep` handles yt-dlp/ffmpeg extraction.
 - **AI calls** – `TranscribeAudioStep` selects OpenAI vs Gemini via `ctx.get_stt_config()`. `ExplainTextStep` delegates to the text-processing service. `RunResearchAgentStep` invokes ADK.
 - **Notifications** – `Notify`, `NotifyTranscription`

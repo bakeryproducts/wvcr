@@ -11,6 +11,7 @@ class Command(str, Enum):
     EXPLAIN = "explain"
     VOICEOVER = "voiceover"
     RESEARCH = "research"
+    AGENTIC = "agentic"
     # Daemon-specific
     PING = "ping"
     SHUTDOWN = "shutdown"
@@ -58,6 +59,12 @@ COMMAND_REGISTRY: Dict[Command, CommandSpec] = {
         args=["instruction", "language", "provider"],
         pipeline_mode="ResearchPipelineMode",
     ),
+    Command.AGENTIC: CommandSpec(
+        name=Command.AGENTIC,
+        description="Run agentic pipeline via external ADK API Server",
+        args=["session_id", "app_name", "instruction", "files", "language"],
+        pipeline_mode="AgenticPipelineMode",
+    ),
     Command.PING: CommandSpec(
         name=Command.PING,
         description="Ping daemon to check if alive",
@@ -81,6 +88,7 @@ def get_user_commands() -> list[Command]:
         Command.EXPLAIN,
         Command.VOICEOVER,
         Command.RESEARCH,
+        Command.AGENTIC,
         Command.PING,
     ]
 

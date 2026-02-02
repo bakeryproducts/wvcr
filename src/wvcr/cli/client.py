@@ -58,6 +58,15 @@ def main():
     )
     parser.add_argument("--url", help="URL for transcribe-url command")
     parser.add_argument("--instruction", help="Text instruction for explain/research")
+    parser.add_argument(
+        "--session-id", dest="session_id", help="Session ID for agentic mode"
+    )
+    parser.add_argument(
+        "--app-name",
+        dest="app_name",
+        help="App name for agentic mode (default: ADK_APP_NAME env)",
+    )
+    parser.add_argument("--files", help="Comma-separated file paths for agentic mode")
     parser.add_argument("--language", default="ru", help="Language code (default: ru)")
     parser.add_argument("--provider", help="Provider (openai/gemini)")
 
@@ -67,7 +76,7 @@ def main():
     cmd_args = {}
     cmd_enum = Command(args.command)
     spec = COMMAND_REGISTRY[cmd_enum]
-    
+
     # Map CLI args to command args
     for arg_name in spec.args:
         if hasattr(args, arg_name) and getattr(args, arg_name) is not None:
