@@ -1,12 +1,34 @@
 import os
-import socket
 import json
 import time
+import socket
 from typing import Any
 
 from loguru import logger
-
 from wvcr.config import OUTPUT
+
+
+_LOGURU_CONFIGURED = False
+
+def _configure_logging() -> None:
+    global _LOGURU_CONFIGURED
+    if _LOGURU_CONFIGURED:
+        return
+
+    logs_dir = OUTPUT / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    # set log level to DEBUG for daemon
+
+    logger.add(
+        OUTPUT / "logs" / "{time:YYYY_MM}.log",
+        format="{time:YYYY-MM-DD HH:mm:ss:SSS} | {level} | {message}",
+        level="DEBUG",
+    )
+    logger.info(f"Logging configured {OUTPUT}")
+    _LOGURU_CONFIGURED = True
+
+# Configure logging BEFORE heavy imports so that any module-level loggers work
+_configure_logging()
 
 # Heavy imports - loaded once at daemon startup
 from wvcr.cli.runtime import build_runtime_context
@@ -16,23 +38,6 @@ from wvcr.modes2.transcribe_url_pipeline_mode import TranscribeUrlPipelineMode
 from wvcr.modes2.explain_pipeline_mode import ExplainPipelineMode
 from wvcr.modes2.voiceover_pipeline_mode import VoiceoverPipelineMode
 from wvcr.modes2.research_pipeline_mode import ResearchPipelineMode
-
-_LOGURU_CONFIGURED = False
-
-
-def _configure_logging() -> None:
-    global _LOGURU_CONFIGURED
-    if _LOGURU_CONFIGURED:
-        return
-
-    logs_dir = OUTPUT / "logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-
-    logger.add(
-        OUTPUT / "logs" / "{time:YYYY_MM}.log",
-        format="{time:YYYY-MM-DD HH:mm:ss:SSS} | {level} | {message}",
-    )
-    _LOGURU_CONFIGURED = True
 
 SOCKET_PATH = "/tmp/wvcr.sock"
 PID_FILE = "/tmp/wvcr.pid"
@@ -49,8 +54,6 @@ MODE_CLASSES = {
 
 class WVCRDaemon:
     def __init__(self):
-        _configure_logging()
-
         self.socket_path = SOCKET_PATH
         self.sock = None
         self.running = False
