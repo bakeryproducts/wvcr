@@ -22,20 +22,15 @@ class RunAgenticStep(Step):
     def execute(self, state, ctx):
         cfg = get_adk_config()
         session_id = state.get("session_id") or "default_session"
-        # Override app_name from state if provided
         app_name = state.get("app_name") or cfg["app_name"]
 
         try:
             with httpx.Client(timeout=120.0) as client:
-                # Ensure session exists (create if not)
                 self._ensure_session(client, cfg, app_name, session_id)
 
-                # Build and send message
                 parts = self._build_parts(state)
                 if not parts:
-                    raise StepError(
-                        "RunAgenticStep requires 'audio_part', 'instruction', or 'file_parts' in state"
-                    )
+                    raise StepError("RunAgenticStep requires 'audio_part', 'instruction', or 'file_parts' in state")
 
                 payload = {
                     "appName": app_name,
@@ -48,17 +43,13 @@ class RunAgenticStep(Step):
                 }
 
                 url = f"{cfg['url']}/run"
-                logger.info(
-                    f"Calling ADK API: {url} app={app_name} session={session_id}"
-                )
+                logger.info(f"Calling ADK API: {url} payload {payload}")
 
                 resp = client.post(url, json=payload)
                 resp.raise_for_status()
                 data = resp.json()
         except httpx.HTTPStatusError as e:
-            raise StepError(
-                f"ADK API error: {e.response.status_code} - {e.response.text}"
-            )
+            raise StepError(f"ADK API error: {e.response.status_code} - {e.response.text}")
         except httpx.RequestError as e:
             raise StepError(f"ADK API request failed: {e}")
 
@@ -66,13 +57,9 @@ class RunAgenticStep(Step):
         state.set("agentic_result", result)
         logger.info(f"Agentic completed, result length: {len(result)} chars")
 
-    def _ensure_session(
-        self, client: httpx.Client, cfg: dict, app_name: str, session_id: str
-    ):
-        url = (
-            f"{cfg['url']}/apps/{app_name}/users/{cfg['user_id']}/sessions/{session_id}"
-        )
-        # Try to create session, ignore if already exists
+    def _ensure_session(self, client: httpx.Client, cfg: dict, app_name: str, session_id: str):
+        url = ( f"{cfg['url']}/apps/{app_name}/users/{cfg['user_id']}/sessions/{session_id}")
+
         try:
             resp = client.post(url, json={})
             if resp.status_code == 200:
@@ -81,9 +68,8 @@ class RunAgenticStep(Step):
                 logger.debug(f"Session already exists: {session_id}")
         except httpx.HTTPStatusError as e:
             if e.response.status_code != 409:
-                logger.warning(
-                    f"Session creation returned {e.response.status_code}, continuing anyway"
-                )
+                logger.warning(f"Session creation returned {e.response.status_code}, continuing anyway")
+
 
     def _build_parts(self, state) -> list:
         parts = []
