@@ -133,6 +133,7 @@ class AgenticTUI(App):
 
     BINDINGS = [
         Binding("ctrl+q", "quit", "Quit"),
+        Binding("escape", "quit", "Quit"),
         Binding("ctrl+r", "run_command", "Run"),
         Binding("ctrl+e", "refresh", "Refresh"),
     ]
@@ -257,8 +258,14 @@ def main():
     result = app.run()
 
     if result:
-        print(f"\nExecuting: {' '.join(result)}\n")
-        subprocess.run(result)
+        # Detach process so terminal closes immediately
+        subprocess.Popen(
+            result,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+        )
 
 
 if __name__ == "__main__":
