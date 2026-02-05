@@ -23,12 +23,14 @@ class RunAgenticStep(Step):
     def execute(self, state, ctx):
         cfg = get_adk_config()
         default_session = str(datetime.now().strftime("%Y-%m-%d"))
-        logger.debug(f"Using session_id: {state.get('session_id')} or default: {default_session}")
+        logger.debug(
+            f"Using session_id: {state.get('session_id')} or default: {default_session}"
+        )
         session_id = state.get("session_id") or default_session
         app_name = state.get("app_name") or cfg["app_name"]
 
         try:
-            with httpx.Client(timeout=120.0) as client:
+            with httpx.Client(timeout=300.0) as client:
                 self._ensure_session(client, cfg, app_name, session_id)
 
                 parts = self._build_parts(state)
@@ -61,7 +63,7 @@ class RunAgenticStep(Step):
         logger.info(f"Agentic completed, result length: {len(result)} chars")
 
     def _ensure_session(self, client: httpx.Client, cfg: dict, app_name: str, session_id: str):
-        url = ( f"{cfg['url']}/apps/{app_name}/users/{cfg['user_id']}/sessions/{session_id}")
+        url = f"{cfg['url']}/apps/{app_name}/users/{cfg['user_id']}/sessions/{session_id}"
 
         try:
             resp = client.post(url, json={})
@@ -72,7 +74,6 @@ class RunAgenticStep(Step):
         except httpx.HTTPStatusError as e:
             if e.response.status_code != 409:
                 logger.warning(f"Session creation returned {e.response.status_code}, continuing anyway")
-
 
     def _build_parts(self, state) -> list:
         parts = []
