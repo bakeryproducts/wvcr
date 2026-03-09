@@ -69,6 +69,9 @@ def main():
     parser.add_argument("--files", help="Comma-separated file paths for agentic mode")
     parser.add_argument("--language", default="ru", help="Language code (default: ru)")
     parser.add_argument("--provider", help="Provider (openai/gemini)")
+    parser.add_argument(
+        "--vad", action="store_true", help="Enable voice activity detection"
+    )
 
     args = parser.parse_args()
 

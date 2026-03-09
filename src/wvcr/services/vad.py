@@ -14,19 +14,31 @@ class VADConfig:
 
 
 class BaseVAD:
-    def is_speech(self, pcm_bytes: bytes, rate: int) -> bool:  # pragma: no cover - interface
+    def is_speech(
+        self, pcm_bytes: bytes, rate: int
+    ) -> bool:  # pragma: no cover - interface
         raise NotImplementedError
+
 
 class NoVad:
     def is_speech(self, pcm_bytes: bytes, rate: int) -> bool:
         return True
 
+
 class WebRtcVAD(BaseVAD):
     """WebRTC VAD wrapper with hangover handling."""
 
-    def __init__(self, aggressiveness: int = 2, hangover_ms: int = 0, chunk_ms: int = 20, rate: int = 16000):
+    def __init__(
+        self,
+        aggressiveness: int = 2,
+        hangover_ms: int = 0,
+        chunk_ms: int = 20,
+        rate: int = 16000,
+    ):
         if webrtcvad is None:
-            raise RuntimeError("webrtcvad is not available; install it or disable WebRTC VAD")
+            raise RuntimeError(
+                "webrtcvad is not available; install it or disable WebRTC VAD"
+            )
         if chunk_ms not in (10, 20, 30):
             raise ValueError("WebRTC VAD requires frame sizes of 10, 20, or 30 ms")
         if rate not in (8000, 16000, 32000, 48000):
@@ -88,7 +100,7 @@ class SileroVAD(BaseVAD):
         import array
         import torch
 
-        arr = array.array('h')
+        arr = array.array("h")
         arr.frombytes(pcm_bytes)
         t = torch.tensor(arr, dtype=torch.float32)
         t /= 32768.0
@@ -107,23 +119,22 @@ class SileroVAD(BaseVAD):
 
         kwargs = {}
         if self._threshold is not None:
-            kwargs['threshold'] = float(self._threshold)
+            kwargs["threshold"] = float(self._threshold)
         if self._min_speech_ms is not None:
-            kwargs['min_speech_duration_ms'] = int(self._min_speech_ms)
+            kwargs["min_speech_duration_ms"] = int(self._min_speech_ms)
         if self._min_silence_ms is not None:
-            kwargs['min_silence_duration_ms'] = int(self._min_silence_ms)
+            kwargs["min_silence_duration_ms"] = int(self._min_silence_ms)
 
-        ts = get_speech_timestamps(wav, self._model, sampling_rate=rate, return_seconds=False, **kwargs)
+        ts = get_speech_timestamps(
+            wav, self._model, sampling_rate=rate, return_seconds=False, **kwargs
+        )
         return ts or []
 
     def is_speech(self, pcm_bytes: bytes, rate: int) -> bool:
         res = self._is_speech(pcm_bytes, rate)
-        # if res:
-        #     logger.debug(f"Silero VAD speech detected  buf_len={len(self._buf)}")
-        # else:
-        #     logger.debug("No speech detected")
+        if res:
+            logger.debug(f"Silero VAD speech detected  buf_len={len(self._buf)}")
         return res
-
 
     def _is_speech(self, pcm_bytes: bytes, rate: int) -> bool:
         if rate != 16000:
@@ -145,14 +156,15 @@ class SileroVAD(BaseVAD):
             total_samples = len(self._buf) // 2
             last_region_start = max(0, total_samples - self._last_chunk_samples)
             for seg in timestamps:
-                start = int(seg.get('start', 0))
-                end = int(seg.get('end', 0))
+                start = int(seg.get("start", 0))
+                end = int(seg.get("end", 0))
                 if end > last_region_start and start < total_samples:
                     # Speech overlaps the latest chunk
                     if self._hangover_ms > 0:
                         self._hangover_frames = max(
                             self._hangover_frames,
-                            self._hangover_ms // max(1, (self._last_chunk_samples * 1000 // rate)),
+                            self._hangover_ms
+                            // max(1, (self._last_chunk_samples * 1000 // rate)),
                         )
                     return True
 

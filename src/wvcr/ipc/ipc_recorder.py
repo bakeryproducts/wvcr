@@ -16,14 +16,35 @@ class IPCVoiceRecorder:
     It spawns a separate mic capture process that streams VAD-filtered PCM frames
     via a Unix domain socket. Frames are accumulated locally until stopped.
     """
+
     def __init__(self, config: RecorderAudioConfig, use_evdev: bool = False):
         self.config = config
         self.use_evdev = use_evdev
-        self._ipc = IPCMicHandler(rate=self.config.RATE, channels=self.config.CHANNELS, enable_vad=self.config.ENABLE_VAD)
+        self._current_vad = config.ENABLE_VAD
+        self._ipc = IPCMicHandler(
+            rate=self.config.RATE,
+            channels=self.config.CHANNELS,
+            enable_vad=self._current_vad,
+        )
         self._frames: list[bytes] = []
         self._recording = False
 
-    def record(self, output_file: Path, format: str = "wav") -> Path:
+    def _ensure_ipc(self, enable_vad: bool):
+        """Recreate IPC handler if VAD setting changed."""
+        if enable_vad != self._current_vad:
+            self._current_vad = enable_vad
+            self._ipc = IPCMicHandler(
+                rate=self.config.RATE,
+                channels=self.config.CHANNELS,
+                enable_vad=enable_vad,
+            )
+
+    def record(
+        self, output_file: Path, format: str = "wav", vad: bool | None = None
+    ) -> tuple[Path, float]:
+        if vad is not None:
+            self._ensure_ipc(vad)
+        logger.info(f"[IPC] Recording with VAD={self._current_vad}")
         output_file.parent.mkdir(parents=True, exist_ok=True)
         self._ipc.start()
         self._frames = []
@@ -41,7 +62,10 @@ class IPCVoiceRecorder:
         key_monitor.start()
 
         try:
-            while self._recording and (time.time() - start_time) < self.config.MAX_DURATION:
+            while (
+                self._recording
+                and (time.time() - start_time) < self.config.MAX_DURATION
+            ):
                 try:
                     frame = self._ipc.get_frame(timeout=0.25)
                     if frame:
@@ -54,15 +78,15 @@ class IPCVoiceRecorder:
             self._ipc.stop()
             self._recording = False
 
-        logger.info("[IPC] Recording stopped")
+        duration = time.time() - start_time
+        logger.info(f"[IPC] Recording stopped ({duration:.1f}s)")
 
         if format.lower() == "mp3":
             self._save_mp3(output_file)
         else:
             self._save_wav(output_file)
         logger.info("Files saved")
-        return output_file
-
+        return output_file, duration
 
     def _save_wav(self, output_file: Path):
         if not self._frames:
@@ -70,7 +94,7 @@ class IPCVoiceRecorder:
         raw = b"".join(self._frames)
         import pyaudio
 
-        with wave.open(str(output_file), 'wb') as wf:
+        with wave.open(str(output_file), "wb") as wf:
             wf.setnchannels(self.config.CHANNELS)
             wf.setsampwidth(pyaudio.PyAudio().get_sample_size(pyaudio.paInt16))
             wf.setframerate(self.config.RATE)
@@ -80,23 +104,29 @@ class IPCVoiceRecorder:
     def _save_mp3(self, output_file: Path):
         if not self._frames:
             logger.warning("[IPC] No audio frames captured; creating empty file")
-        
+
         raw = b"".join(self._frames)
-        
+
         # Pipe raw PCM directly to ffmpeg - no temp file needed
         cmd = [
             "ffmpeg",
-            "-f", "s16le",           # signed 16-bit little-endian PCM
-            "-ar", str(self.config.RATE),     # sample rate
-            "-ac", str(self.config.CHANNELS), # channels
-            "-i", "pipe:0",          # read from stdin
-            "-codec:a", "libmp3lame",
+            "-f",
+            "s16le",  # signed 16-bit little-endian PCM
+            "-ar",
+            str(self.config.RATE),  # sample rate
+            "-ac",
+            str(self.config.CHANNELS),  # channels
+            "-i",
+            "pipe:0",  # read from stdin
+            "-codec:a",
+            "libmp3lame",
             # "-b:a", "16k",           # 16 kbps to match Gemini downsampling
-            "-b:a", "128k",         # 128 kbps for better quality  
-            "-y",                    # overwrite output
-            str(output_file)
+            "-b:a",
+            "128k",  # 128 kbps for better quality
+            "-y",  # overwrite output
+            str(output_file),
         ]
-        
+
         try:
             result = subprocess.run(cmd, input=raw, check=True, capture_output=True)
             logger.info(f"[IPC] Audio saved as MP3 to {output_file}")

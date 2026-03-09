@@ -5,10 +5,9 @@ import struct
 import threading
 import queue
 import multiprocessing as mp
-from collections import deque 
+from collections import deque
 
 from loguru import logger
-
 
 
 class UnixAudioInput:
@@ -17,7 +16,12 @@ class UnixAudioInput:
     and exposing a get(timeout)->bytes API for consumers.
     """
 
-    def __init__(self, socket_path: str = "/tmp/adk_audio.sock", rcvbuf_bytes: int = 4_194_304, max_frames: int = 64):
+    def __init__(
+        self,
+        socket_path: str = "/tmp/adk_audio.sock",
+        rcvbuf_bytes: int = 4_194_304,
+        max_frames: int = 64,
+    ):
         self.socket_path = socket_path
         self.rcvbuf_bytes = int(rcvbuf_bytes)
         self.max_frames = int(max_frames)
@@ -40,9 +44,13 @@ class UnixAudioInput:
         self._srv.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, self.rcvbuf_bytes)
         self._srv.bind(self.socket_path)
         self._srv.listen(1)
-        logger.info(f"UnixAudioInput listening on {self.socket_path}, SO_RCVBUF={self.rcvbuf_bytes}")
+        logger.info(
+            f"UnixAudioInput listening on {self.socket_path}, SO_RCVBUF={self.rcvbuf_bytes}"
+        )
 
-        self._reader_thread = threading.Thread(target=self._accept_and_read, daemon=True)
+        self._reader_thread = threading.Thread(
+            target=self._accept_and_read, daemon=True
+        )
         self._reader_thread.start()
 
     def stop(self):
@@ -98,7 +106,9 @@ class UnixAudioInput:
                             try:
                                 _ = self._frames.get_nowait()
                                 self._frames.put_nowait(data)
-                                logger.debug("UnixAudioInput buffer full, dropped oldest frame")
+                                logger.debug(
+                                    "UnixAudioInput buffer full, dropped oldest frame"
+                                )
                             except queue.Empty:
                                 pass
             except Exception as e:
@@ -108,28 +118,50 @@ class UnixAudioInput:
         logger.debug("UnixAudioInput reader thread exiting")
 
 
-
-def _capture_worker(stop_evt,
-                    socket_path: str,
-                    rate: int,
-                    channels: int,
-                    chunk_ms: int,
-                    batch_ms: int,
-                    sndbuf_bytes: int,
-                    warmup_ms: int,
-                    enable_vad: bool):
+def _capture_worker(
+    stop_evt,
+    socket_path: str,
+    rate: int,
+    channels: int,
+    chunk_ms: int,
+    batch_ms: int,
+    sndbuf_bytes: int,
+    warmup_ms: int,
+    enable_vad: bool,
+):
+    import sys
     import pyaudio  # import inside process
-    from wvcr.services.vad import SileroVAD, NoVad
 
-    if enable_vad:
-        vad = SileroVAD(window_ms=1000, hangover_ms=1000)
-    else:
-        vad = NoVad()
+    print(
+        f"[capture_worker] Starting, enable_vad={enable_vad}",
+        file=sys.stderr,
+        flush=True,
+    )
+
+    try:
+        if enable_vad:
+            from wvcr.services.vad import SileroVAD
+
+            print("[capture_worker] Loading SileroVAD...", file=sys.stderr, flush=True)
+            vad = SileroVAD(window_ms=1000, hangover_ms=1000)
+            print("[capture_worker] SileroVAD loaded", file=sys.stderr, flush=True)
+        else:
+            from wvcr.services.vad import NoVad
+
+            vad = NoVad()
+    except Exception as e:
+        print(f"[capture_worker] VAD init failed: {e}", file=sys.stderr, flush=True)
+        raise
 
     pa = pyaudio.PyAudio()
     fpb = int(rate * chunk_ms / 1000)
-    stream = pa.open(format=pyaudio.paInt16, channels=channels, rate=rate,
-                     input=True, frames_per_buffer=fpb)
+    stream = pa.open(
+        format=pyaudio.paInt16,
+        channels=channels,
+        rate=rate,
+        input=True,
+        frames_per_buffer=fpb,
+    )
 
     # Discard initial samples to avoid device start-up transient
     if warmup_ms and warmup_ms > 0:
@@ -153,7 +185,6 @@ def _capture_worker(stop_evt,
             time.sleep(0.1)
     logger.info("Mic capture connected to Unix socket")
 
-
     def _send_payload(payload: bytes):
         header = struct.pack("!I", len(payload))
         try:
@@ -162,7 +193,6 @@ def _capture_worker(stop_evt,
         except (BrokenPipeError, ConnectionError, OSError):
             logger.warning("Mic capture socket send failed; exiting capture loop")
             return False
-
 
     bytes_per_sample = pa.get_sample_size(pyaudio.paInt16)  # 2 for Int16
     pre_seconds = 1.0
@@ -197,7 +227,8 @@ def _capture_worker(stop_evt,
             send_buf = bytes(buf)
             _send_payload(send_buf)
         try:
-            stream.stop_stream(); stream.close()
+            stream.stop_stream()
+            stream.close()
         finally:
             pa.terminate()
         try:
@@ -207,15 +238,17 @@ def _capture_worker(stop_evt,
         logger.info("Mic capture process exiting")
 
 
-def start_mic_capture_process(socket_path: str = "/tmp/adk_audio.sock",
-                              rate: int = 16000,
-                              channels: int = 1,
-                              chunk_ms: int = 20,
-                              batch_ms: int = 100,
-                              sndbuf_bytes: int = 4_194_304,
-                              warmup_ms: int = 50,
-                              enable_vad: bool = False,
-                              join_timeout: float = 0.3):
+def start_mic_capture_process(
+    socket_path: str = "/tmp/adk_audio.sock",
+    rate: int = 16000,
+    channels: int = 1,
+    chunk_ms: int = 20,
+    batch_ms: int = 100,
+    sndbuf_bytes: int = 4_194_304,
+    warmup_ms: int = 50,
+    enable_vad: bool = False,
+    join_timeout: float = 0.3,
+):
     """Start the background mic capture process.
 
     Added join_timeout + non-blocking stop support so callers can avoid the
@@ -233,7 +266,17 @@ def start_mic_capture_process(socket_path: str = "/tmp/adk_audio.sock",
     stop_evt = mp.Event()
     proc = mp.Process(
         target=_capture_worker,
-        args=(stop_evt, socket_path, rate, channels, chunk_ms, batch_ms, sndbuf_bytes, warmup_ms, enable_vad),
+        args=(
+            stop_evt,
+            socket_path,
+            rate,
+            channels,
+            chunk_ms,
+            batch_ms,
+            sndbuf_bytes,
+            warmup_ms,
+            enable_vad,
+        ),
         daemon=True,
     )
     proc.start()

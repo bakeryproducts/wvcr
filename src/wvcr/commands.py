@@ -32,7 +32,7 @@ COMMAND_REGISTRY: Dict[Command, CommandSpec] = {
     Command.TRANSCRIBE: CommandSpec(
         name=Command.TRANSCRIBE,
         description="Record and transcribe audio",
-        args=["language", "provider"],
+        args=["language", "provider", "vad"],
         pipeline_mode="TranscribePipelineMode",
     ),
     Command.TRANSCRIBE_URL: CommandSpec(
@@ -44,7 +44,7 @@ COMMAND_REGISTRY: Dict[Command, CommandSpec] = {
     Command.EXPLAIN: CommandSpec(
         name=Command.EXPLAIN,
         description="Record a question and explain something",
-        args=["instruction", "thing", "language", "provider"],
+        args=["instruction", "thing", "language", "provider", "vad"],
         pipeline_mode="ExplainPipelineMode",
     ),
     Command.VOICEOVER: CommandSpec(
@@ -56,13 +56,13 @@ COMMAND_REGISTRY: Dict[Command, CommandSpec] = {
     Command.RESEARCH: CommandSpec(
         name=Command.RESEARCH,
         description="Run research pipeline using ADK agents",
-        args=["instruction", "language", "provider"],
+        args=["instruction", "language", "provider", "vad"],
         pipeline_mode="ResearchPipelineMode",
     ),
     Command.AGENTIC: CommandSpec(
         name=Command.AGENTIC,
         description="Run agentic pipeline via external ADK API Server",
-        args=["session_id", "app_name", "instruction", "files", "language"],
+        args=["session_id", "app_name", "instruction", "files", "language", "vad"],
         pipeline_mode="AgenticPipelineMode",
     ),
     Command.PING: CommandSpec(

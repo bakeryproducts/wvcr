@@ -36,10 +36,15 @@ def start_daemon():
     print("Starting WVCR daemon...")
 
     # Start daemon as subprocess (detached)
+    # Redirect stderr to log file for debugging subprocess issues
+    log_dir = os.path.expanduser("~/Documents/wvcr/output/logs")
+    os.makedirs(log_dir, exist_ok=True)
+    stderr_log = open(os.path.join(log_dir, "daemon_stderr.log"), "a")
+
     subprocess.Popen(
         [sys.executable, "-m", "wvcr.daemon.server"],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=stderr_log,
         start_new_session=True,
     )
 
@@ -50,7 +55,7 @@ def start_daemon():
         if get_daemon_pid() and os.path.exists(SOCKET_PATH):
             print("Daemon started successfully")
             return
-    
+
     print("Failed to start daemon", file=sys.stderr)
     sys.exit(1)
 
