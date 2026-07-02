@@ -21,6 +21,8 @@ DEFAULT_PRESETS = [
 class Preset:
     name: str
     language: str
+    backend: str = "openai"
+    echo_target_language: bool = True
 
 
 def config_path() -> Path:
@@ -39,7 +41,14 @@ def load_presets() -> list[Preset]:
     out: list[Preset] = []
     for item in raw:
         try:
-            out.append(Preset(item["name"], item["language"]))
+            out.append(
+                Preset(
+                    name=item["name"],
+                    language=item["language"],
+                    backend=item.get("backend", "openai"),
+                    echo_target_language=item.get("echo_target_language", True),
+                )
+            )
         except KeyError as e:
             logger.warning(f"skipping preset missing key {e}: {item}")
     if not out:

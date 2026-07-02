@@ -40,6 +40,7 @@ wvcr-ctl = "wvcr.daemon.control:main"
 wvcr = "wvcr.cli.client:main"
 wvcr-tui = "wvcr.tui.main:main"
 wvcr-translate = "wvcr.translate.cli:main"
+wvcr-hint = "wvcr.hint.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

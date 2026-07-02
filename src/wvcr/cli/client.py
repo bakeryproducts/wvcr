@@ -67,10 +67,20 @@ def main():
         help="App name for agentic mode (default: ADK_APP_NAME env)",
     )
     parser.add_argument("--files", help="Comma-separated file paths for agentic mode")
+    parser.add_argument(
+        "--backend",
+        choices=["adk", "gemini"],
+        help="Agentic backend: 'adk' (external ADK API server) or 'gemini' (direct Gemini)",
+    )
     parser.add_argument("--language", default="ru", help="Language code (default: ru)")
     parser.add_argument("--provider", help="Provider (openai/gemini)")
     parser.add_argument(
         "--vad", action="store_true", help="Enable voice activity detection"
+    )
+    parser.add_argument(
+        "--citations",
+        action="store_true",
+        help="Append grounding source links to agentic (gemini) output",
     )
 
     args = parser.parse_args()

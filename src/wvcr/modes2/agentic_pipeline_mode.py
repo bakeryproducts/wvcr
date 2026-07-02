@@ -14,6 +14,7 @@ from wvcr.pipeline.steps.io_steps import (
     CopyToClipboard,
 )
 from wvcr.pipeline.steps.run_agentic_step import RunAgenticStep
+from wvcr.pipeline.steps.run_agentic_gemini_step import RunAgenticGeminiStep
 from wvcr.pipeline.steps.notify import Notify, NotifyTranscription
 
 
@@ -26,6 +27,7 @@ class AgenticPipelineMode:
         session_id = self.ctx.options.get("session_id")
         app_name = self.ctx.options.get("app_name")
         files = self.ctx.options.get("files")
+        backend = (self.ctx.options.get("backend") or "gemini").lower()
 
         steps = [
             InitState("agentic"),
@@ -62,8 +64,11 @@ class AgenticPipelineMode:
         # Load file artifacts
         steps.append(LoadFileArtifacts())
 
-        # Run agentic
-        steps.append(RunAgenticStep())
+        # Run agentic via selected backend
+        if backend == "gemini":
+            steps.append(RunAgenticGeminiStep())
+        else:
+            steps.append(RunAgenticStep())
 
         # Output
         steps.extend(

@@ -10,7 +10,7 @@ from loguru import logger
 
 from .audio import (
     CHANNELS,
-    FRAME_SAMPLES,
+    FRAME_MS,
     SAMPLE_RATE,
     SAMPLE_WIDTH,
     SINK_NAME,
@@ -21,16 +21,14 @@ from .presets import Preset
 from .recorder import PCMRecorder, TranscriptRecorder, make_session_dir
 from .session import TranslateConfig, TranslateSession
 
-FRAME_BYTES = FRAME_SAMPLES * CHANNELS * SAMPLE_WIDTH
 
-
-def _spawn_capture() -> subprocess.Popen:
+def _spawn_capture(rate: int) -> subprocess.Popen:
     return subprocess.Popen(
         [
             "pacat",
             "--record",
             "--device=@DEFAULT_SOURCE@",
-            f"--rate={SAMPLE_RATE}",
+            f"--rate={rate}",
             f"--channels={CHANNELS}",
             "--format=s16le",
             "--raw",
@@ -67,7 +65,7 @@ class Runner:
         self.record = record
         self.capture_proc: Optional[subprocess.Popen] = None
         self.playback_proc: Optional[subprocess.Popen] = None
-        self.session: Optional[TranslateSession] = None
+        self.session: Optional[object] = None
         self._stop = asyncio.Event()
         self._audio_in_bytes = 0
         self._audio_out_bytes = 0
@@ -76,6 +74,9 @@ class Runner:
         self._source_text: Optional[TranscriptRecorder] = None
         self._translated_text: Optional[TranscriptRecorder] = None
         self._session_dir: Optional[Path] = None
+        self.input_rate = 16000 if self.preset.backend == "gemini" else 24000
+        self.frame_samples = self.input_rate * FRAME_MS // 1000
+        self.frame_bytes = self.frame_samples * CHANNELS * SAMPLE_WIDTH
 
     def _on_output_audio(self, pcm: bytes) -> None:
         self._audio_out_bytes += len(pcm)
@@ -106,7 +107,7 @@ class Runner:
         assert stdout is not None
         try:
             while not self._stop.is_set():
-                chunk = await loop.run_in_executor(None, stdout.read, FRAME_BYTES)
+                chunk = await loop.run_in_executor(None, stdout.read, self.frame_bytes)
                 if not chunk:
                     logger.warning("capture stdout closed")
                     break
@@ -119,7 +120,7 @@ class Runner:
 
     async def run(self) -> None:
         stop_loopback()
-        self.capture_proc = _spawn_capture()
+        self.capture_proc = _spawn_capture(self.input_rate)
         self.playback_proc = _spawn_playback()
         logger.info(
             f"capture pid={self.capture_proc.pid} playback pid={self.playback_proc.pid}"
@@ -127,7 +128,7 @@ class Runner:
 
         if self.record:
             self._session_dir = make_session_dir()
-            self._source_rec = PCMRecorder(self._session_dir / "source.wav")
+            self._source_rec = PCMRecorder(self._session_dir / "source.wav", sample_rate=self.input_rate)
             self._translated_rec = PCMRecorder(self._session_dir / "translated.wav")
             self._source_text = TranscriptRecorder(self._session_dir / "source.txt")
             self._translated_text = TranscriptRecorder(
@@ -135,12 +136,23 @@ class Runner:
             )
             logger.info(f"recording -> {self._session_dir}")
 
-        cfg = TranslateConfig(
-            target_language=self.preset.language,
-            api_key=self.api_key,
-        )
+        if self.preset.backend == "gemini":
+            from .gemini_session import GeminiConfig, GeminiSession
+            cfg = GeminiConfig(
+                target_language=self.preset.language,
+                api_key=self.api_key,
+                echo_target_language=self.preset.echo_target_language,
+            )
+            session_cls = GeminiSession
+        else:
+            cfg = TranslateConfig(
+                target_language=self.preset.language,
+                api_key=self.api_key,
+            )
+            session_cls = TranslateSession
+
         try:
-            async with TranslateSession(
+            async with session_cls(
                 cfg,
                 on_output_audio=self._on_output_audio,
                 on_output_transcript=self._on_output_transcript,

@@ -83,5 +83,27 @@ class SystemNotificationManager:
             logger.error(f"Failed to send system notification: {e}")
 
 
+class LayerShellNotificationManager:
+    @staticmethod
+    def send_notification(
+        title: str,
+        text: str,
+        timeout: int = 3,
+        color: str = "#2ecc71",
+        font_size: str = "32px",
+        cutoff: int | None = None,
+    ):
+        if cutoff and len(text) > cutoff:
+            text = text[:cutoff] + "..."
+
+        from wvcr.hint.popup import show_popup
+
+        try:
+            show_popup(title=title, text=text, timeout=timeout, color=color)
+        except Exception as e:
+            logger.exception(e)
+            logger.error(f"Failed to show layer-shell popup: {e}")
+
+
 # Legacy alias
 NotificationManager = SystemNotificationManager

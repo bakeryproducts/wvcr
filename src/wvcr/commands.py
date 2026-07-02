@@ -62,7 +62,7 @@ COMMAND_REGISTRY: Dict[Command, CommandSpec] = {
     Command.AGENTIC: CommandSpec(
         name=Command.AGENTIC,
         description="Run agentic pipeline via external ADK API Server",
-        args=["session_id", "app_name", "instruction", "files", "language", "vad"],
+        args=["session_id", "app_name", "instruction", "files", "language", "vad", "backend", "citations"],
         pipeline_mode="AgenticPipelineMode",
     ),
     Command.PING: CommandSpec(

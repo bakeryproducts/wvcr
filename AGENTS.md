@@ -40,14 +40,14 @@ wvcr/
 - **ExplainPipelineMode** – Optionally injects a prerecorded instruction; otherwise records/transcribes like the transcribe pipeline, ingests extra “thing” context (clipboard text or Wayland image), calls `ExplainTextStep`, and saves/announces the explanation.
 - **VoiceoverPipelineMode** – Reads text from clipboard, generates speech via OpenAI TTS, and saves to `output/voiceover`.
 - **ResearchPipelineMode** – Accepts text instruction or audio input; routes to local ADK agent (`src/wvcr/adk/runner.py`) with in-memory session.
-- **AgenticPipelineMode** – Records audio, optionally accepts `--instruction`, `--files`, `--app-name`, `--session-id`; calls external ADK API Server (`RunAgenticStep`), auto-creates session if needed, saves to `output/agentic`.
+- **AgenticPipelineMode** – Records audio, optionally accepts `--instruction`, `--files`, `--app-name`, `--session-id`, `--backend`. Selectable backend (`--backend`, default `gemini`): `gemini` calls Gemini directly via `RunAgenticGeminiStep` (single-shot, no ADK tools); `adk` calls the external ADK API Server via `RunAgenticStep`, auto-creating a session if needed. Saves to `output/agentic`.
 
 ## Step Inventory (`src/wvcr/pipeline/steps`)
 - **Bootstrapping** – `InitState`, `PrepareOutputPath`, and `SetKeyFromArg` seed state; `PasteFromClipboard` supports text or Wayland images.
 - **Lifecycle** (`lifecycle_steps.py`) – `InitState`, `PrepareOutputPath`, `SetKeyFromArg`, `Finalize` handle pipeline initialization and cleanup.
 - **I/O** (`io_steps.py`) – `PasteFromClipboard` (text/Wayland images), `CopyToClipboard`, `SaveTranscript`, `SaveExplanation`, `SaveResearchResult`, `SaveAgenticResult`.
 - **Recording** – `ConfigureRecording` merges defaults/CLI overrides, `RecordAudio` calls the IPC recorder, `DownloadAudioStep` handles yt-dlp/ffmpeg extraction.
-- **AI calls** – `TranscribeAudioStep` selects OpenAI vs Gemini via `ctx.get_stt_config()`. `ExplainTextStep` delegates to the text-processing service. `RunResearchAgentStep` invokes ADK.
+- **AI calls** – `TranscribeAudioStep` selects OpenAI vs Gemini via `ctx.get_stt_config()`. `ExplainTextStep` delegates to the text-processing service. `RunResearchAgentStep` invokes ADK. `RunAgenticStep` (external ADK API) and `RunAgenticGeminiStep` (direct Gemini) are the swappable agentic backends.
 - **Notifications** – `Notify`, `NotifyTranscription`
 
 ## Google ADK Integration (`src/wvcr/adk`)
@@ -71,3 +71,16 @@ wvcr/
 - `.env` loading and API configuration happen in `src/wvcr/config.py`; missing keys will raise runtime errors before any AI calls.
 - Outputs are timestamped per mode under `output/<mode>/`, enabling downstream steps (answer/explain) to build history chains quickly.
 - Keyboard monitors honor the `WVCR_USE_EVDEV` env var for Wayland reliability
+
+## Live Translate (`src/wvcr/translate`)
+- Independent PulseAudio-based pipeline (`wvcr-translate` entrypoint), separate from the daemon/pipeline stack.
+- `audio.py` builds a virtual mic: `module-null-sink` (`wvcr-virtmic`) + loopback from the real mic + `module-remap-source` exposing it as "WVCR Mic" for apps (Zoom etc.).
+- `runner.py` stops that loopback while translating, streams the real mic via `pacat` into a Gemini/OpenAI realtime session, and plays translated audio back into `wvcr-virtmic` so calling apps hear the translation instead of raw speech.
+
+## Live Hints (`src/wvcr/hint`)
+- Independent, Cluely-style "press a key, get a popup hint" pipeline (`wvcr-hint` entrypoint). Does not touch or conflict with `translate` — uses its own PulseAudio bus.
+- `audio.py` creates `wvcr-hintbus` (null-sink) with two loopbacks into it: `@DEFAULT_SOURCE@` (mic) and `@DEFAULT_MONITOR@` (whatever plays in headphones/speakers), mixed natively by PulseAudio.
+- `buffer.py`'s `RingBuffer` reads raw PCM16 from `pacat --record wvcr-hintbus.monitor` in a background thread into an in-memory rolling window (default 600s). Idle CPU cost is ~0 (blocking I/O). On demand, compresses the snapshot to MP3 @16kbps via in-memory ffmpeg pipe (matches Gemini's internal 16kbps downsampling, so no quality is lost by compressing first — cuts payload ~16x vs raw PCM/WAV).
+- `hotkey.py` provides a global hotkey: evdev backend on Wayland (reads real keyboard devices directly, works when compositor doesn't support global shortcuts), pynput fallback on X11. Note: laptop F-row keys often don't emit standard F-codes without Fn/Fn-Lock (EC/firmware level, unfixable in software) — pick a key confirmed via `evtest`.
+- `llm.py` sends the MP3 + a prompt to `gemini-3.5-flash` with Google Search grounding enabled (`types.Tool(google_search=...)`), forcing plain-text Russian output.
+- `runner.py` wires hotkey → buffer snapshot → LLM call (own thread, non-blocking, drops overlapping presses) → `SystemNotificationManager` popup.

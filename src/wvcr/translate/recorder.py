@@ -19,8 +19,9 @@ def make_session_dir() -> Path:
 
 
 class PCMRecorder:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, sample_rate: int = SAMPLE_RATE):
         self.path = path
+        self.sample_rate = sample_rate
         self._chunks: list[bytes] = []
 
     def write(self, pcm: bytes) -> None:
@@ -36,7 +37,7 @@ class PCMRecorder:
         with wave.open(str(self.path), "wb") as wf:
             wf.setnchannels(CHANNELS)
             wf.setsampwidth(SAMPLE_WIDTH)
-            wf.setframerate(SAMPLE_RATE)
+            wf.setframerate(self.sample_rate)
             wf.writeframes(b"".join(self._chunks))
         logger.info(f"saved {self.total_bytes()} bytes -> {self.path}")
         return True

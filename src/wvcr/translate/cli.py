@@ -128,9 +128,9 @@ def cmd_toggle(args: argparse.Namespace) -> int:
             logger.info("no preset chosen, exiting")
             return 0
 
-    api_key = get_api_key("openai")
+    api_key = get_api_key(preset.backend)
     if not api_key:
-        logger.error("OPENAI_API_KEY not set")
+        logger.error(f"{preset.backend.upper()}_API_KEY not set")
         return 1
 
     write_pid()
@@ -160,9 +160,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         preset = pick_preset(presets)
         if preset is None:
             return 0
-    api_key = get_api_key("openai")
+    api_key = get_api_key(preset.backend)
     if not api_key:
-        logger.error("OPENAI_API_KEY not set")
+        logger.error(f"{preset.backend.upper()}_API_KEY not set")
         return 1
     run_translation(preset, api_key, record=args.record)
     return 0
