@@ -38,7 +38,7 @@ window {
 """
 
 
-def _run_gtk(title: str, text: str, timeout: float, color: str) -> None:
+def _run_gtk(title: str, text: str, timeout: float, color: str, position: str = "bottom") -> None:
     import gi
 
     gi.require_version("Gtk", "3.0")
@@ -46,13 +46,15 @@ def _run_gtk(title: str, text: str, timeout: float, color: str) -> None:
     gi.require_version("GtkLayerShell", "0.1")
     from gi.repository import Gdk, GLib, Gtk, GtkLayerShell
 
+    edge = GtkLayerShell.Edge.TOP if position == "top" else GtkLayerShell.Edge.BOTTOM
+
     win = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
     GtkLayerShell.init_for_window(win)
     GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
-    GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.BOTTOM, True)
+    GtkLayerShell.set_anchor(win, edge, True)
     GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.LEFT, False)
     GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.RIGHT, False)
-    GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, 48)
+    GtkLayerShell.set_margin(win, edge, 48)
     GtkLayerShell.set_namespace(win, "wvcr-hint")
     GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.ON_DEMAND)
 
@@ -137,10 +139,11 @@ def _write_pidfile() -> None:
 
 def main() -> None:
     title, text, timeout_s, color = sys.argv[1], sys.argv[2], float(sys.argv[3]), sys.argv[4]
+    position = sys.argv[5] if len(sys.argv) > 5 else "bottom"
     _reap_previous()
     _write_pidfile()
     try:
-        _run_gtk(title, text, timeout_s, color)
+        _run_gtk(title, text, timeout_s, color, position)
     finally:
         try:
             os.remove(PIDFILE)
@@ -153,10 +156,11 @@ def show_popup(
     text: str,
     timeout: float = 0,
     color: str = "#2ecc71",
+    position: str = "bottom",
     system_python: str = "/usr/bin/python3",
 ) -> None:
     subprocess.Popen(
-        [system_python, os.path.abspath(__file__), title, text, str(timeout), color],
+        [system_python, os.path.abspath(__file__), title, text, str(timeout), color, position],
         start_new_session=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,

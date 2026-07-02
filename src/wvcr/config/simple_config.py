@@ -17,7 +17,7 @@ class WVCRConfig:
     notify: bool = True
     notify_backend: str = field(
         default_factory=lambda: os.getenv("WVCR_NOTIFY_BACKEND", "system")
-    )  # "hyprland" or "system"
+    )  # "hyprland", "system", or "layershell"
     use_evdev: bool = field(
         default_factory=lambda: os.getenv("WVCR_USE_EVDEV", "true").lower() == "true"
     )

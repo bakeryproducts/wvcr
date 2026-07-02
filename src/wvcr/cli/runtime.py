@@ -1,5 +1,6 @@
 from wvcr.notification_manager import (
     HyprlandNotificationManager,
+    LayerShellNotificationManager,
     SystemNotificationManager,
 )
 from wvcr.pipeline import RuntimeContext
@@ -14,11 +15,10 @@ def build_runtime_context(cfg: WVCRConfig | None = None) -> RuntimeContext:
         cfg = get_default_config()
 
     # Select notification backend
-    notifier_class = (
-        HyprlandNotificationManager
-        if cfg.notify_backend == "hyprland"
-        else SystemNotificationManager
-    )
+    notifier_class = {
+        "hyprland": HyprlandNotificationManager,
+        "layershell": LayerShellNotificationManager,
+    }.get(cfg.notify_backend, SystemNotificationManager)
 
     options = {
         "language": cfg.language,

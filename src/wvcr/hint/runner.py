@@ -37,21 +37,21 @@ class HintRunner:
                 return
             logger.info(f"sending {len(mp3)} bytes of mp3 audio to Gemini")
             SystemNotificationManager.send_notification(
-                title="Hint", text="thinking...", timeout=2
+                title="Hint", text="thinking...", timeout=2, position="bottom"
             )
             text = get_hint(mp3, self.api_key)
             if text:
                 SystemNotificationManager.send_notification(
-                    title="Hint", text=text, timeout=0
+                    title="Hint", text=text, timeout=0, position="bottom"
                 )
             else:
                 SystemNotificationManager.send_notification(
-                    title="Hint", text="(no answer)", timeout=3
+                    title="Hint", text="(no answer)", timeout=3, position="bottom"
                 )
         except Exception as e:
             logger.exception(e)
             SystemNotificationManager.send_notification(
-                title="Hint error", text=str(e), timeout=4, color="#e74c3c"
+                title="Hint error", text=str(e), timeout=4, color="#e74c3c", position="bottom"
             )
         finally:
             self._busy.release()
@@ -63,7 +63,7 @@ class HintRunner:
         self._hotkeys.start()
         logger.info(f"hint listening, press {self.hotkey}")
         SystemNotificationManager.send_notification(
-            title="Hint ON", text=f"press {self.hotkey}", timeout=2
+            title="Hint ON", text=f"press {self.hotkey}", timeout=2, position="bottom"
         )
 
         for sig in (signal.SIGINT, signal.SIGTERM):
@@ -80,7 +80,7 @@ class HintRunner:
         self.buffer.stop()
         teardown()
         SystemNotificationManager.send_notification(
-            title="Hint OFF", text="stopped", timeout=2
+            title="Hint OFF", text="stopped", timeout=2, position="bottom"
         )
         logger.info("hint stopped")
 

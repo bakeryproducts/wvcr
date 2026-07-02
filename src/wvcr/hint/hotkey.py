@@ -66,10 +66,6 @@ class EvdevHotkey:
                 try:
                     for ev in fdmap[fd].read():
                         if ev.type == ecodes.EV_KEY and ev.value == 1:
-                            logger.debug(
-                                f"key code={ev.code} "
-                                f"name={ecodes.KEY.get(ev.code, '?')}"
-                            )
                             if ev.code == target:
                                 logger.info(f"hotkey {self.key_name} pressed")
                                 self.callback()

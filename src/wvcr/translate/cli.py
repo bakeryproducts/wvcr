@@ -11,7 +11,17 @@ from pathlib import Path
 from loguru import logger
 
 from wvcr.config.env import get_api_key
-from wvcr.notification_manager import SystemNotificationManager
+from wvcr.config.simple_config import get_default_config
+from wvcr.notification_manager import (
+    HyprlandNotificationManager,
+    LayerShellNotificationManager,
+    SystemNotificationManager,
+)
+
+_NOTIFIER = {
+    "hyprland": HyprlandNotificationManager,
+    "layershell": LayerShellNotificationManager,
+}.get(get_default_config().notify_backend, SystemNotificationManager)
 
 from .audio import loopback_running, remap_source_exists, setup, sink_exists, teardown
 from .picker import pick_preset
@@ -134,7 +144,7 @@ def cmd_toggle(args: argparse.Namespace) -> int:
         return 1
 
     write_pid()
-    SystemNotificationManager.send_notification(
+    _NOTIFIER.send_notification(
         title="Translate ON",
         text=f"-> {preset.name} ({preset.language})",
         timeout=2,
@@ -143,7 +153,7 @@ def cmd_toggle(args: argparse.Namespace) -> int:
         run_translation(preset, api_key, record=args.record)
     finally:
         clear_pid()
-        SystemNotificationManager.send_notification(
+        _NOTIFIER.send_notification(
             title="Translate OFF",
             text="restored mic",
             timeout=2,

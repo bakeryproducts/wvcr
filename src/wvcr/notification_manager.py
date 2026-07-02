@@ -92,6 +92,7 @@ class LayerShellNotificationManager:
         color: str = "#2ecc71",
         font_size: str = "32px",
         cutoff: int | None = None,
+        position: str = "top",
     ):
         if cutoff and len(text) > cutoff:
             text = text[:cutoff] + "..."
@@ -99,7 +100,7 @@ class LayerShellNotificationManager:
         from wvcr.hint.popup import show_popup
 
         try:
-            show_popup(title=title, text=text, timeout=timeout, color=color)
+            show_popup(title=title, text=text, timeout=timeout, color=color, position=position)
         except Exception as e:
             logger.exception(e)
             logger.error(f"Failed to show layer-shell popup: {e}")
