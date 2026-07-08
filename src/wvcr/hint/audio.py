@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import select
 import subprocess
+import threading
 from dataclasses import dataclass
 
 from loguru import logger
@@ -94,8 +96,6 @@ def _create_sink() -> None:
 
 
 def _create_loopback(source: str, tag: str) -> None:
-    if _find_loopback_modules(tag):
-        return
     _pactl(
         "load-module",
         "module-loopback",
@@ -108,6 +108,44 @@ def _create_loopback(source: str, tag: str) -> None:
     logger.info(f"started hint loopback {source} -> {BUS_NAME} ({tag})")
 
 
+def _loopback_source_arg(m: ModuleEntry) -> str | None:
+    for tok in m.args.split():
+        if tok.startswith("source="):
+            return tok[len("source="):]
+    return None
+
+
+def _ensure_loopback(desired_source: str, tag: str) -> None:
+    """Make sure exactly one loopback for `tag` exists, pointed at
+    `desired_source`. Reloads it if it drifted to the wrong source (e.g. the
+    default output device changed), removes duplicates."""
+    matches = _find_loopback_modules(tag)
+    correct = [m for m in matches if _loopback_source_arg(m) == desired_source]
+    stale = [m for m in matches if _loopback_source_arg(m) != desired_source]
+    for m in stale:
+        try:
+            _pactl("unload-module", str(m.module_id))
+            logger.info(f"removed stale hint loopback {tag} (was {_loopback_source_arg(m)})")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"failed to unload stale loopback {m.module_id}: {e}")
+    # drop extra correct duplicates, keep one
+    for m in correct[1:]:
+        try:
+            _pactl("unload-module", str(m.module_id))
+        except subprocess.CalledProcessError:
+            pass
+    if not correct:
+        _create_loopback(desired_source, tag)
+
+
+def _default_source() -> str:
+    return _pactl("get-default-source").strip()
+
+
+def _default_sink_monitor() -> str:
+    return f"{_pactl('get-default-sink').strip()}.monitor"
+
+
 def _remove_loopbacks() -> None:
     for tag in (MIC_TAG, SYS_TAG):
         for m in _find_loopback_modules(tag):
@@ -117,11 +155,66 @@ def _remove_loopbacks() -> None:
                 logger.warning(f"failed to unload loopback {m.module_id}: {e}")
 
 
-def setup() -> None:
+def _default_sink_monitor() -> str:
+    sink = _pactl("get-default-sink").strip()
+    return f"{sink}.monitor"
+
+
+def reconcile() -> None:
+    """Idempotently ensure the bus + both loopbacks exist and point at the
+    *current* default devices. Safe to call repeatedly."""
     _create_sink()
-    # mic + everything you hear in headphones -> one bus, mixed by PulseAudio
-    _create_loopback("@DEFAULT_SOURCE@", MIC_TAG)
-    _create_loopback("@DEFAULT_MONITOR@", SYS_TAG)
+    # mic + everything you hear -> one bus, mixed by PulseAudio.
+    # @DEFAULT_MONITOR@/@DEFAULT_SOURCE@ are resolved once at load time (and
+    # @DEFAULT_MONITOR@ is broken under PipeWire's pulse-compat, resolving to
+    # the mic), so resolve explicit device names and reconcile on change.
+    _ensure_loopback(_default_source(), MIC_TAG)
+    _ensure_loopback(_default_sink_monitor(), SYS_TAG)
+
+
+def setup() -> None:
+    reconcile()
+
+
+def watch_defaults(stop_event: threading.Event) -> None:
+    """Follow default-device changes: re-point loopbacks whenever the default
+    sink/source changes (e.g. plugging Bluetooth/HDMI). Returns when stopped.
+
+    Uses select() so it wakes periodically to observe `stop_event` instead of
+    blocking forever on subscribe output -- lets the caller join it *before*
+    teardown, so a late event can't recreate the bus after teardown."""
+    try:
+        proc = subprocess.Popen(
+            ["pactl", "subscribe"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+        )
+    except FileNotFoundError:
+        logger.warning("pactl not found; default-device following disabled")
+        return
+    try:
+        assert proc.stdout is not None
+        while not stop_event.is_set():
+            ready, _, _ = select.select([proc.stdout], [], [], 0.3)
+            if not ready:
+                continue
+            line = proc.stdout.readline()
+            if not line:
+                break
+            # default sink/source changes surface as a 'server' change event
+            if "on server" in line and not stop_event.is_set():
+                try:
+                    reconcile()
+                except Exception as e:
+                    logger.warning(f"hint reconcile failed: {e}")
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            proc.kill()
 
 
 def teardown() -> None:

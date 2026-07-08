@@ -18,9 +18,6 @@ from .audio import (
 FRAME_BYTES = FRAME_SAMPLES * CHANNELS * SAMPLE_WIDTH
 MP3_BITRATE = "16k"  # matches what Gemini downsamples to internally anyway,
 # so sending higher bitrate is just wasted upload bytes.
-SPEED_FACTOR = 2.0  # speed up audio before sending -- only text matters, not
-# playback quality, so a faster/shorter clip means less upload + faster
-# Gemini processing. atempo supports 0.5-2.0 per filter instance.
 
 
 class RingBuffer:
@@ -93,10 +90,7 @@ class RingBuffer:
 
         Gemini downsamples all audio to 16 Kbps internally, so a low-bitrate
         MP3 costs no understanding quality while cutting payload size ~6x
-        vs raw PCM/WAV -- important once the window is minutes long. Audio
-        is also sped up by SPEED_FACTOR since only the transcribed text
-        matters -- a shorter clip uploads faster and Gemini processes it
-        faster too.
+        vs raw PCM/WAV -- important once the window is minutes long.
         """
         pcm = self.snapshot()
         cmd = [
@@ -105,7 +99,6 @@ class RingBuffer:
             "-ar", str(SAMPLE_RATE),
             "-ac", str(CHANNELS),
             "-i", "pipe:0",
-            "-filter:a", f"atempo={SPEED_FACTOR}",
             "-codec:a", "libmp3lame",
             "-b:a", MP3_BITRATE,
             "-f", "mp3",

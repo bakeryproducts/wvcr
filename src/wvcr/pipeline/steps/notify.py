@@ -18,7 +18,7 @@ class Notify(Step):
         ctx.notifier.send_notification(self.title, self.text)
 
 class NotifyTranscription(Notify):
-    def __init__(self, title: str = "WVCR", key: str = "transcript", cutoff: int = 100):
+    def __init__(self, title: str = "WVCR", key: str = "transcript", cutoff: int = 2000):
         super().__init__(title=title)
         self.key = key
         self.cutoff = cutoff

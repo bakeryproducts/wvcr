@@ -38,7 +38,14 @@ window {
 """
 
 
-def _run_gtk(title: str, text: str, timeout: float, color: str, position: str = "bottom") -> None:
+def _run_gtk(
+    title: str,
+    text: str,
+    timeout: float,
+    color: str,
+    position: str = "bottom",
+    keyboard_interactive: bool = False,
+) -> None:
     import gi
 
     gi.require_version("Gtk", "3.0")
@@ -56,7 +63,12 @@ def _run_gtk(title: str, text: str, timeout: float, color: str, position: str = 
     GtkLayerShell.set_anchor(win, GtkLayerShell.Edge.RIGHT, False)
     GtkLayerShell.set_margin(win, edge, 48)
     GtkLayerShell.set_namespace(win, "wvcr-hint")
-    GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.ON_DEMAND)
+    keyboard_mode = (
+        GtkLayerShell.KeyboardMode.ON_DEMAND
+        if keyboard_interactive
+        else GtkLayerShell.KeyboardMode.NONE
+    )
+    GtkLayerShell.set_keyboard_mode(win, keyboard_mode)
 
     win.set_decorated(False)
     win.set_resizable(False)
@@ -66,6 +78,14 @@ def _run_gtk(title: str, text: str, timeout: float, color: str, position: str = 
     if visual is not None:
         win.set_visual(visual)
     win.set_app_paintable(True)
+
+    display = screen.get_display()
+    monitor = display.get_monitor_at_window(screen.get_root_window()) if display else None
+    geo = monitor.get_geometry() if monitor else None
+    screen_w = geo.width if geo else screen.get_width()
+    screen_h = geo.height if geo else screen.get_height()
+    max_width = int(screen_w * 0.6)
+    max_height = int(screen_h * 0.5)
 
     css = Gtk.CssProvider()
     css.load_from_data(CSS % {b"border": color.encode()})
@@ -96,7 +116,7 @@ def _run_gtk(title: str, text: str, timeout: float, color: str, position: str = 
     body_lbl = Gtk.Label(label=text)
     body_lbl.set_line_wrap(True)
     body_lbl.set_line_wrap_mode(2)  # PANGO_WRAP_WORD_CHAR
-    body_lbl.set_max_width_chars(72)
+    body_lbl.set_max_width_chars(110)
     body_lbl.set_selectable(True)
     body_lbl.set_halign(Gtk.Align.START)
     body_lbl.set_justify(Gtk.Justification.LEFT)
@@ -105,8 +125,16 @@ def _run_gtk(title: str, text: str, timeout: float, color: str, position: str = 
     card.pack_start(header, False, False, 0)
     card.pack_start(body_lbl, False, False, 0)
 
+    scroller = Gtk.ScrolledWindow()
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    scroller.set_propagate_natural_width(True)
+    scroller.set_propagate_natural_height(True)
+    scroller.set_max_content_width(max_width)
+    scroller.set_max_content_height(max_height)
+    scroller.add(card)
+
     outer = Gtk.EventBox()
-    outer.add(card)
+    outer.add(scroller)
     outer.connect("button-press-event", lambda w, e: close())
     close_btn.connect("clicked", close)
 
@@ -140,10 +168,11 @@ def _write_pidfile() -> None:
 def main() -> None:
     title, text, timeout_s, color = sys.argv[1], sys.argv[2], float(sys.argv[3]), sys.argv[4]
     position = sys.argv[5] if len(sys.argv) > 5 else "bottom"
+    keyboard_interactive = sys.argv[6] == "1" if len(sys.argv) > 6 else False
     _reap_previous()
     _write_pidfile()
     try:
-        _run_gtk(title, text, timeout_s, color, position)
+        _run_gtk(title, text, timeout_s, color, position, keyboard_interactive)
     finally:
         try:
             os.remove(PIDFILE)
@@ -158,9 +187,19 @@ def show_popup(
     color: str = "#2ecc71",
     position: str = "bottom",
     system_python: str = "/usr/bin/python3",
+    keyboard_interactive: bool = False,
 ) -> None:
     subprocess.Popen(
-        [system_python, os.path.abspath(__file__), title, text, str(timeout), color, position],
+        [
+            system_python,
+            os.path.abspath(__file__),
+            title,
+            text,
+            str(timeout),
+            color,
+            position,
+            "1" if keyboard_interactive else "0",
+        ],
         start_new_session=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
