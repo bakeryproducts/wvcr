@@ -4,7 +4,7 @@ from loguru import logger
 from google import genai
 from google.genai import types
 
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3.6-flash"
 
 _BASE = """You are a live assistant listening to a conversation.
 The audio mixes my voice with other participants.
