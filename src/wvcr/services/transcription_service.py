@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Any
 
@@ -11,8 +12,25 @@ TRANSCRIBE_PROMPT = (
     "Capture the core message accurately but remove filler words, false starts, and verbal noise. "
     "Reorganize sentences for clarity if needed while preserving the original meaning and intent. "
     "Output ONLY the processed transcript - no meta-commentary, no greetings, no sign-offs, no explanations. "
+    "Never emit timestamps, timecodes, or time markers of any kind - not '[00:05]', not '0:05', not '(5s)', "
+    "not bare 'M:SS' pairs, nothing periodic tied to elapsed seconds. This rule applies even mid-sentence "
+    "and mid-word: never break a word apart to insert a time marker in the middle of it "
+    "(e.g. do not write 'Кар 0:18ты' or 'несло 0:42жно' - the correct output is the unbroken word "
+    "'Карты' / 'несложно' with no digits inside it). "
+    "Output plain running text only, with no time annotations whatsoever, and with every word left intact. "
     "Start immediately with the content."
 )
+
+# Fallback safety net: some models (notably certain Gemini versions) ignore the
+# prompt above and still emit periodic "M:SS" markers, sometimes splitting a
+# word in half to insert one (e.g. "Кар 0:18ты" -> "Карты"). Strip a leading
+# space + timestamp and rejoin, since the model never adds a space after the
+# marker when it lands mid-word.
+_TIMESTAMP_RE = re.compile(r"\s?(?<!\d)\d{1,2}:\d{2}(?!\d)")
+
+
+def strip_timestamps(text: str) -> str:
+    return _TIMESTAMP_RE.sub("", text)
 
 def transcribe_audio(audio_file: Path, config: OAIConfig | GeminiConfig | Any, language: str = "ru") -> str:
     provider = getattr(config, "provider", None)
@@ -20,13 +38,15 @@ def transcribe_audio(audio_file: Path, config: OAIConfig | GeminiConfig | Any, l
 
     try:
         if provider == "openai":
-            return transcribe_oai(audio_file, config, language)
+            text = transcribe_oai(audio_file, config, language)
         elif provider == "gemini":
-            return transcribe_gemini(audio_file, config, language)
+            text = transcribe_gemini(audio_file, config, language)
         else:
             raise TypeError( f"Unsupported provider: {provider} (config type={type(config)})")
     except Exception as e:
         raise Exception(f"Transcription failed: {e}") from e
+
+    return strip_timestamps(text)
 
 
 def transcribe_oai(audio_file: Path, config: OAIConfig, language: str = "ru") -> str:
