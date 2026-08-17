@@ -28,9 +28,9 @@ class OAIConfig:
 @dataclass
 class GeminiConfig:
     provider: str = "gemini"
-    STT_MODEL: str = "gemini-3.6-flash"
-    GPT_MODEL: str = "gemini-3.6-flash"
-    EXPLAIN_MODEL: str = "gemini-3.6-flash"
+    STT_MODEL: str = "gemini-3.7-flash"
+    GPT_MODEL: str = "gemini-3.7-flash"
+    EXPLAIN_MODEL: str = "gemini-3.7-flash"
     temperature: float = 1.0
     api_key: str = field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
     _client: Any = field(default=None, init=False, repr=False)
