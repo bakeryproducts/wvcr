@@ -45,13 +45,39 @@ def exec_wait(cmd: str, timeout: float = 3.0) -> str:
     return "started, no new window appeared"
 
 
+def _foreground(c: dict) -> str | None:
+    try:
+        shell = Path(f"/proc/{c['pid']}/task/{c['pid']}/children").read_text().split()[0]
+        tpgid = Path(f"/proc/{shell}/stat").read_text().rsplit(")", 1)[1].split()[5]
+        return Path(f"/proc/{tpgid}/comm").read_text().strip()
+    except (OSError, IndexError):
+        return None
+
+
+def _line(c: dict, active: str | None) -> str:
+    proc = _foreground(c) if _is_terminal(c) else None
+    app = f'{c["class"]} running {proc}' if proc else c["class"]
+    (x, y), (w, h) = c["at"], c["size"]
+    mark = " [focused]" if c["address"] == active else ""
+    return f'{c["address"]} {app} "{c["title"]}" {w}x{h} at {x},{y}{mark}'
+
+
+def layout_key() -> tuple:
+    clients = tuple(sorted((c["address"], c["workspace"]["id"]) for c in _json("clients") if c.get("mapped")))
+    return _json("activeworkspace").get("id"), _json("activewindow").get("address"), clients
+
+
 def state() -> str:
-    clients = [c for c in _json("clients") if c.get("mapped")]
-    active = _json("activewindow").get("address")
-    lines = [f"active workspace: {_json('activeworkspace').get('id')}"]
-    for c in sorted(clients, key=lambda c: (c["workspace"]["id"], c["at"][0], c["at"][1])):
-        mark = " [focused]" if c["address"] == active else ""
-        lines.append(f'ws {c["workspace"]["name"]}: {c["address"]} {c["class"]} "{c["title"]}"{mark}')
+    clients = sorted((c for c in _json("clients") if c.get("mapped")), key=lambda c: (c["workspace"]["id"], c["at"][0], c["at"][1]))
+    focused = _json("activewindow")
+    active = focused.get("address")
+    ws = _json("activeworkspace").get("id")
+    lines = [f"visible workspace: {ws}"]
+    lines.append(f"focused window: {_line(focused, active)}" if active else "focused window: none")
+    lines.append(f"windows on workspace {ws}:")
+    lines += [f"  {_line(c, active)}" for c in clients if c["workspace"]["id"] == ws]
+    lines.append("other workspaces:")
+    lines += [f'  ws {c["workspace"]["name"]}: {_line(c, active)}' for c in clients if c["workspace"]["id"] != ws]
     return "\n".join(lines)
 
 
@@ -101,11 +127,14 @@ def type_text(text: str, address: str | None = None) -> None:
 
 def press(keys: str, address: str | None = None) -> None:
     c = client(address)
+    if c["address"] != _json("activewindow").get("address"):
+        dispatch("focuswindow", f"address:{c['address']}")
+        time.sleep(0.15)
     for combo in keys.split():
         *mods, key = combo.split("+")
         mods = " ".join(MODS.get(m.lower(), m.upper()) for m in mods)
         dispatch("sendshortcut", f"{mods}, {KEYS.get(key.lower(), key)}, address:{c['address']}")
-        time.sleep(0.03)
+        time.sleep(0.12)
 
 
 def screenshot(address: str | None = None) -> bytes:

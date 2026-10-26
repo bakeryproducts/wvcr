@@ -41,14 +41,14 @@ def stop() -> int:
     return 0
 
 
-def run(echo_gate: bool) -> int:
+def run(echo_gate: bool, think: bool) -> int:
     api_key = get_api_key("gemini")
     if not api_key:
         logger.error("GEMINI_API_KEY not set")
         return 1
     PID.write_text(str(os.getpid()))
     try:
-        asyncio.run(Live(api_key, echo_gate=echo_gate).run())
+        asyncio.run(Live(api_key, echo_gate=echo_gate, think=think).run())
     except Exception as e:
         logger.exception(e)
         HyprlandNotificationManager.send_notification("Live", str(e)[:200], color="#e74c3c")
@@ -62,13 +62,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="wvcr-live")
     parser.add_argument("cmd", nargs="?", default="toggle", choices=["toggle", "stop", "run"])
     parser.add_argument("--no-gate", action="store_true", help="keep mic open while the model speaks (headphones)")
+    parser.add_argument("--think", action="store_true", help="extended-thinking model: smarter, ~3s slower per step")
     args = parser.parse_args()
     logger.add(OUTPUT / "logs" / "live.log", rotation="1 MB", retention=3)
     if args.cmd == "stop":
         return stop()
     if args.cmd == "toggle" and read_pid() is not None:
         return stop()
-    return run(echo_gate=not args.no_gate)
+    return run(echo_gate=not args.no_gate, think=args.think)
 
 
 if __name__ == "__main__":

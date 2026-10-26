@@ -11,24 +11,40 @@ from loguru import logger
 from . import hypr
 
 MODEL = "gemini-3.8-live"
+THINK_MODEL = "gemini-3.8-live-extended-thinking"
 IN_RATE = 16000
 OUT_RATE = 24000
 FRAME_BYTES = IN_RATE // 50 * 2
-ECHO_TAIL = 0.3
 OVERLAY = Path(__file__).with_name("overlay.py")
 
-PROMPT = """You are a voice controller for the user's Hyprland desktop. You act through tools; you are not a chatbot.
+PROMPT = """**Persona:**
+You are the user's hands-free computer assistant. The user is a developer working at their Linux desktop (Hyprland, mostly terminals). They talk to you while they work and you operate the computer for them: switch and arrange windows, type text and commands, press keys, open apps, and look at the screen to read, check and explain what is there. You are their hands and eyes on the desktop, and a sharp colleague they can ask about what they see.
 
-Rules:
-- Be extremely brief. Confirm with one or two words or say nothing. Never narrate what you are about to do.
-- The user often pauses to think. If an utterance sounds unfinished, stay silent and wait.
-- When asked to type, write or dictate text, pass it to type_text verbatim, in the language spoken, without rephrasing, translating or adding anything.
-- type_text never presses Enter. Press keys only when asked.
-- Target windows by address. Every tool result contains the fresh window list.
-- To read what is on screen use look. The window must be on the visible workspace.
-- To open apps or trigger the user's shortcuts use dispatch with the dispatcher and args from the bindings below.
-- Speak the user's language (usually Russian).
-- When the user says to stop, finish or bye, call stop without saying anything.
+RESPOND IN RUSSIAN. YOU MUST RESPOND UNMISTAKABLY IN RUSSIAN. The user speaks Russian mixed with English technical terms (git, commit, diff, Enter, Ctrl, workspace, terminal); hear unclear words as Russian or technical terms, never as other languages.
+
+**Conversational loop:**
+The session is an open loop that lasts as long as the user wants. On each request:
+1. Work out what the user wants, using everything said and done earlier in the session. Resolve "that window", "back", "the previous one", "again" from the history.
+2. If you need to know what is on screen to do it right, call look first.
+3. Do it with tools. Multi-step requests are normal: do every step in order.
+4. When you need the result to continue or to answer (command output, a menu that opened, an agent's reply), call look. Plain actions like switching, focusing or typing need no check.
+5. Reply. After a plain action, confirm briefly. When the user asks a question or wants your opinion, answer it properly with the substance, not a filler. Do not announce plans before acting and do not repeat the user's words back.
+
+**Desktop:**
+The desktop state is below. A fresh one comes with every tool result and as a [desktop] message whenever focus, workspace or windows change; always trust the latest. Windows are referenced by address. "This window" or "here" is the focused window. Look for windows on the visible workspace first unless the user names another place. The largest window on a workspace is the main one. Terminals show their foreground program, e.g. "running opencode" or "running zsh".
+
+**Tools:**
+Use type_text to insert text into a window. It inserts exactly what you give and never presses Enter. Dictated text goes in verbatim, in the spoken language; when the user asks you to compose a command or message, write it yourself.
+Use press_keys to send keys into an application, e.g. Enter, Escape, arrows, app shortcuts.
+Use dispatch for anything bound to a Hyprland shortcut in the bindings below, with that binding's dispatcher and args. Hyprland shortcuts do not work through press_keys.
+Use look to get a screenshot of a window or the screen. Before moving through menus or lists with arrow keys, look to see where the cursor is and count the steps.
+When the user says stop, finish or bye, call stop without speaking.
+
+**Guardrails:**
+Describe only what you actually see in a screenshot. If it is unreadable or you did not look, say so; never guess screen contents.
+If a request is ambiguous and a wrong guess is costly (closing, sending, committing, deleting), ask a short question first.
+The user often pauses mid-sentence. If an utterance sounds unfinished, wait.
+If an action did not work, say so and try another way instead of repeating the same call.
 
 User key bindings (combo: dispatcher args):
 {binds}
@@ -36,56 +52,63 @@ User key bindings (combo: dispatcher args):
 User habits (follow these over the bindings):
 {notes}
 
-Current windows:
+Desktop at session start:
 {state}
 """
 NOTES = Path.home() / ".config/wvcr/live.md"
+VOCAB = ["git", "commit", "push", "diff", "Enter", "Escape", "Ctrl", "Alt", "Super", "Shift", "Tab", "workspace", "terminal", "OpenCode", "Hyprland", "lf"]
 
 ADDRESS = {"type": "string", "description": "Window address like 0x55..., defaults to the focused window"}
-TOOLS = [{"function_declarations": [
+FUNCTIONS = [
     {"name": "workspace", "description": "Switch to a workspace.",
      "parameters": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]}},
-    {"name": "focus", "description": "Focus a window.",
+    {"name": "focus", "description": "Focus a window, switching to its workspace if needed.",
      "parameters": {"type": "object", "properties": {"address": ADDRESS}, "required": ["address"]}},
     {"name": "type_text", "description": "Focus a window and insert text into it exactly as given. Does not press Enter.",
      "parameters": {"type": "object", "properties": {"text": {"type": "string"}, "address": ADDRESS}, "required": ["text"]}},
-    {"name": "press_keys", "description": "Send key combos to a window, space separated, e.g. 'enter', 'escape', 'ctrl+c', 'down down enter'.",
+    {"name": "press_keys", "description": "Focus a window and send key combos into the application, space separated, e.g. 'enter', 'escape', 'ctrl+c', 'ctrl+x k', 'down down enter'. Not for Hyprland shortcuts.",
      "parameters": {"type": "object", "properties": {"keys": {"type": "string"}, "address": ADDRESS}, "required": ["keys"]}},
-    {"name": "dispatch", "description": "Run a hyprctl dispatcher, e.g. exec with a command from the bindings, movetoworkspace, killactive, togglefloating, fullscreen.",
+    {"name": "dispatch", "description": "Run a hyprctl dispatcher: exec with a command from the bindings, layoutmsg, movetoworkspace, killactive, togglefloating, fullscreen, etc. Use this for anything bound to a Hyprland shortcut.",
      "parameters": {"type": "object", "properties": {"dispatcher": {"type": "string"}, "arg": {"type": "string"}}, "required": ["dispatcher"]}},
-    {"name": "look", "description": "Screenshot a window (default focused) or the whole screen with address 'screen'; the image arrives as the latest video frame.",
+    {"name": "look", "description": "Screenshot a window (default focused) or the whole visible screen with address 'screen'. The image is attached to the result.",
      "parameters": {"type": "object", "properties": {"address": ADDRESS}}},
     {"name": "stop", "description": "End this voice session."},
-]}]
+]
 
 
 class Live:
-    def __init__(self, api_key: str, echo_gate: bool = True):
+    def __init__(self, api_key: str, echo_gate: bool = True, think: bool = False):
         self.client = genai.Client(api_key=api_key)
         self.echo_gate = echo_gate
+        self.think = think
+        self.model = THINK_MODEL if think else MODEL
         self.session = None
         self.handle = None
         self.prompt = ""
         self.speaking_until = 0.0
         self.busy = False
+        self.thinking = False
         self.stopping = False
         self.ui = None
         self.ui_state = ""
         self.player = None
         self.heard = ""
         self.said = ""
+        self.desk = None
 
     def config(self) -> types.LiveConnectConfig:
         return types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             system_instruction=self.prompt,
-            tools=TOOLS,
-            input_audio_transcription=types.AudioTranscriptionConfig(),
+            tools=[{"function_declarations": [{**fn, "behavior": "NON_BLOCKING"} for fn in FUNCTIONS] if self.think else FUNCTIONS}],
+            thinking_config=types.ThinkingConfig(thinking_level="medium") if self.think else None,
+            media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+            input_audio_transcription=types.AudioTranscriptionConfig(language_codes=["ru-RU", "en-US"], custom_vocabulary=VOCAB),
             output_audio_transcription=types.AudioTranscriptionConfig(),
             context_window_compression=types.ContextWindowCompressionConfig(sliding_window=types.SlidingWindow()),
             session_resumption=types.SessionResumptionConfig(handle=self.handle),
             realtime_input_config=types.RealtimeInputConfig(
-                automatic_activity_detection=types.AutomaticActivityDetection(silence_duration_ms=700)
+                automatic_activity_detection=types.AutomaticActivityDetection(silence_duration_ms=1000)
             ),
         )
 
@@ -126,6 +149,8 @@ class Live:
                 st = "tool"
             elif time.monotonic() < self.speaking_until:
                 st = "speak"
+            elif self.thinking:
+                st = "think"
             else:
                 st = "listen"
             self._set_ui(st)
@@ -144,7 +169,7 @@ class Live:
                 if not chunk:
                     logger.warning("mic closed")
                     return
-                if self.echo_gate and time.monotonic() < self.speaking_until + ECHO_TAIL:
+                if self.echo_gate and time.monotonic() < self.speaking_until:
                     chunk = silence[: len(chunk)]
                 s = self.session
                 if s is None:
@@ -186,23 +211,42 @@ class Live:
             for fc in tool_call.function_calls:
                 args = dict(fc.args or {})
                 logger.info(f"tool {fc.name} {args}")
+                parts = None
                 try:
                     result = await asyncio.to_thread(self._run_tool, fc.name, args)
                     if isinstance(result, bytes):
-                        await s.send_realtime_input(video=types.Blob(data=result, mime_type="image/jpeg"))
-                        result = "screenshot sent as the latest video frame"
+                        parts = [types.FunctionResponsePart(inline_data=types.FunctionResponseBlob(mime_type="image/jpeg", data=result))]
+                        result = "screenshot attached"
                     resp = {"result": result}
                 except Exception as e:
                     logger.warning(f"tool {fc.name} failed: {e}")
                     resp = {"error": str(e)}
                 if not self.stopping:
-                    resp["windows"] = await asyncio.to_thread(hypr.state)
-                responses.append(types.FunctionResponse(id=fc.id, name=fc.name, response=resp))
+                    resp["desktop"] = await asyncio.to_thread(hypr.state)
+                responses.append(types.FunctionResponse(id=fc.id, name=fc.name, response=resp, parts=parts))
             await s.send_tool_response(function_responses=responses)
+            self.desk = await asyncio.to_thread(hypr.layout_key)
         finally:
             self.busy = False
         if self.stopping:
             asyncio.get_running_loop().call_later(0.3, self._stop.set)
+
+    async def _desk_loop(self) -> None:
+        while True:
+            await asyncio.sleep(1)
+            s = self.session
+            if s is None or self.busy or self.stopping:
+                continue
+            try:
+                key = await asyncio.to_thread(hypr.layout_key)
+                if key == self.desk:
+                    continue
+                self.desk = key
+                st = await asyncio.to_thread(hypr.state)
+                await s.send_client_content(turns=[{"role": "user", "parts": [{"text": f"[desktop]\n{st}"}]}], turn_complete=False)
+                logger.debug(f"desktop pushed: ws {key[0]} focus {key[1]}")
+            except Exception as e:
+                logger.debug(f"desktop push: {e}")
 
     async def _receive(self, s) -> None:
         while True:
@@ -228,6 +272,8 @@ class Live:
                     for part in sc.model_turn.parts or []:
                         if part.inline_data and part.inline_data.data:
                             self._play(part.inline_data.data)
+                if sc.interaction_status:
+                    self.thinking = sc.interaction_status == types.InteractionStatus.IN_PROGRESS
                 if sc.turn_complete:
                     if self.heard.strip():
                         logger.info(f"user: {self.heard.strip()}")
@@ -249,13 +295,15 @@ class Live:
             notes=NOTES.read_text().strip() if NOTES.exists() else "none",
             state=hypr.state(),
         )
-        bg = [asyncio.create_task(self._mic_loop()), asyncio.create_task(self._ui_loop())]
+        logger.debug(f"system prompt:\n{self.prompt}")
+        self.desk = hypr.layout_key()
+        bg = [asyncio.create_task(t) for t in (self._mic_loop(), self._ui_loop(), self._desk_loop())]
         failures = 0
         try:
             while not self._stop.is_set():
                 try:
-                    async with self.client.aio.live.connect(model=MODEL, config=self.config()) as s:
-                        logger.info(f"connected (resumed={self.handle is not None})")
+                    async with self.client.aio.live.connect(model=self.model, config=self.config()) as s:
+                        logger.info(f"connected {self.model} (resumed={self.handle is not None})")
                         self.session = s
                         failures = 0
                         recv = asyncio.create_task(self._receive(s))

@@ -11,6 +11,7 @@ COLORS = {
     "connect": "rgba(150, 150, 150, %s)",
     "listen": "rgba(80, 170, 255, %s)",
     "tool": "rgba(80, 220, 140, %s)",
+    "think": "rgba(255, 190, 70, %s)",
     "speak": "rgba(190, 110, 255, %s)",
 }
 
